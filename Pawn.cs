@@ -18,13 +18,13 @@ public class Pawn : Piece
         //Can eat pieces en-passant
         //Can turn into another piece when it reaches the end
 
-        allowedDestinations[0] = allowedDestinations[1] = posOnBoard + (isWhite ? Vector2Int.up : Vector2Int.down);
+        allowedDestinations[0] = allowedDestinations[1] = boardCoords + (isWhite ? Vector2Int.up : Vector2Int.down);
 
         //May move two squares if posOnBoard is on the starting line
-        if (isWhite && posOnBoard.y == 1)
-            allowedDestinations[1] = posOnBoard + new Vector2Int(0, 2);
-        else if (!isWhite && posOnBoard.y == 6)
-            allowedDestinations[1] = posOnBoard - new Vector2Int(0, 2);
+        if (isWhite && boardCoords.y == 1)
+            allowedDestinations[1] = boardCoords + new Vector2Int(0, 2);
+        else if (!isWhite && boardCoords.y == 6)
+            allowedDestinations[1] = boardCoords - new Vector2Int(0, 2);
 
 
         //May eat diagonally left or right
