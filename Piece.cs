@@ -12,9 +12,23 @@ public class Piece : MonoBehaviour
 
     public Board board;
 
+    public Pawn pawn;
+    public Rook rook;
+    public Queen queen;
+    public Bishop bishop;
+    public Knight knight;
+    public King king;
+
     public virtual void Awake()
     {
         board = FindObjectOfType<Board>();
+
+        pawn = GetComponent<Pawn>();
+        rook = GetComponent<Rook>();
+        knight = GetComponent<Knight>();
+        bishop = GetComponent<Bishop>();
+        queen = GetComponent<Queen>();
+        king = GetComponent<King>();
     }
 
     public virtual void DeterminePossibleActions()

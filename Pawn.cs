@@ -67,16 +67,7 @@ public class Pawn : Piece
             //Check for en-passant pawns
             if (enPassantPawn != null && !WillMovingPiecePutKingInCheck(enPassantPawn.boardCoords + Vector2Int.up))
                 allowedDestinations.Add(enPassantPawn.boardCoords + Vector2Int.up);
-            //HAVE TO DETECT WHETHER THE ENPASSANT MOVEMENT IS POSSIBLE (DONT FORGET KING-CHECK), AND HAVE TO TELL BOARD TO EAT THE PAWN BEING EN-PASSANT'D
-            //Maybe I can make EatPiece public and call EatPiece(enPassantPawn)
-            //**Actually I can't, this should be triggered if the allowedDestinations is taken
 
-            //Check for en-passant movement - might need an event and listener (whenever a pawn double moves, it sends a signal to every other opposing pawns, allowing for an extra potential destination
-            //And it also needs to be used as a flag to call the EatPiece that's been en-passant'd
-            //***
-            //***
-            //***
-//            enPassantAllowedThisTurn = false; //Using this reseting bool, I don't have to reset the enPassantPawn variable
         }
 
         else if (!isWhite)

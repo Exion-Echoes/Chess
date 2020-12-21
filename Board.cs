@@ -22,6 +22,7 @@ public class Board : MonoBehaviour
     public Piece movingPiece;
     public List<Piece> eatenWhitePieces = new List<Piece>();
     public List<Piece> eatenBlackPieces = new List<Piece>();
+    Pawn pawnThatMayEatEnPassant;
 
     //Board highlights of which piece last moved and where a picked piece can move
     GameObject[] destinationTraces = new GameObject[9];
@@ -73,6 +74,11 @@ public class Board : MonoBehaviour
                 Debug.Log("Grabbed " + piece);
                 movingPiece = piece;
                 piece.beingCarried = true;
+                if (pawnThatMayEatEnPassant != null && (piece.pawn == null || (piece.pawn != null && piece.pawn != pawnThatMayEatEnPassant)))
+                {
+                    pawnThatMayEatEnPassant.enPassantPawn = null;
+                    pawnThatMayEatEnPassant = null;
+                }
             }
         }
     }
@@ -112,12 +118,6 @@ public class Board : MonoBehaviour
                 if (movingPiece.CanPieceMoveAtBoardCoords(testBoardCoords) && boardArray[testBoardCoords.x, testBoardCoords.y] != null && boardArray[testBoardCoords.x, testBoardCoords.y].isWhite != movingPiece.isWhite)
                     EatPiece(boardArray[testBoardCoords.x, testBoardCoords.y]);
 
-                //*****EN-PASSANT
-                //*****EN-PASSANT
-                //If movement was en-passant - I don't think it's sufficient as is
-                //*****EN-PASSANT
-                //*****EN-PASSANT
-
                 bool enPassantMovementPerformed = false;
                 if (movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
                     enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.up;
@@ -126,22 +126,11 @@ public class Board : MonoBehaviour
                 if (enPassantMovementPerformed && movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
                     EatPiece(boardArray[movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.x, movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.y]);
 
-                //*****EN-PASSANT
-                //*****EN-PASSANT
-                //If movement was en-passant - I don't think it's sufficient as is
-                //*****EN-PASSANT
-                //*****EN-PASSANT
-                //I can put a check for pawns in the beginning of the next if statement?
-                //Need some sort of enPassant event when a pawn double moves to start
-                //or, if movingpiece is a pawn, if testBoardCoords is 2 above/below if isWhite/!isWhite, alert adjacent pawns about this being an enpassantpawn
-                //*****current setup seems to work for white pawns eating black en-passant
-                //**just need to make this possible only for the turn following the double move
 
                 if (!resetPiece) //If movement is allowed
                 {
                     if(movingPiece.GetComponent<Pawn>() != null)
                         CheckIfEnPassantAlertNeedsToBeSent(movingPiece.GetComponent<Pawn>(), testBoardCoords);
-
 
                     boardArray[movingPiece.boardCoords.x, movingPiece.boardCoords.y] = null; //Remove old piece from board array
                     movingPiece.transform.position = UnityBoardCoordinates(testBoardCoords); //Snap new piece to board
@@ -280,21 +269,23 @@ public class Board : MonoBehaviour
     {
         bool whiteEnPassantTrigger = pawn.isWhite && testBoardCoords.y - 2 == pawn.boardCoords.y;
         bool blackEnPassantTrigger = !pawn.isWhite && testBoardCoords.y + 2 == pawn.boardCoords.y;
-        if(whiteEnPassantTrigger)
-        {
-
-        }
-        else if (blackEnPassantTrigger)
+        if(whiteEnPassantTrigger || blackEnPassantTrigger)
         {
             if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.right) != null)
             {
                 if (boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>() != null)
+                {
                     boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>().enPassantPawn = pawn;
+                    pawnThatMayEatEnPassant = boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>();
+                }
             }
             else if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.left) != null)
             {
                 if (boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>() != null)
+                {
                     boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>().enPassantPawn = pawn;
+                    pawnThatMayEatEnPassant = boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>();
+                }
             }
         }
     }
