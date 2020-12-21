@@ -16,11 +16,13 @@ using UnityEngine;
 ///     (DONE) Function to generate pieces and to load them and place them on board
 public class Board : MonoBehaviour
 {
-    //Board is 120 x 120 and situated at (0, 0)
+    //Board is 120 x 120 and situated at (0, 0) - squares are 30 x 30
 
     public Piece[,] boardArray = new Piece[8, 8]; //Used to manage piece-piece interactions
     public Piece movingPiece;
-    
+    public List<Piece> eatenWhitePieces = new List<Piece>();
+    public List<Piece> eatenBlackPieces = new List<Piece>();
+
     //Board highlights of which piece last moved and where a picked piece can move
     GameObject[] destinationTraces = new GameObject[9];
     GameObject[] travelTraces = new GameObject[8];
@@ -43,12 +45,12 @@ public class Board : MonoBehaviour
 
     void CheckForMouseClick()
     {
-        Vector2Int locationOnBoard = BoardCoordinates(mousePos);
+        Vector2Int mousedOverBoardCoords = BoardCoordinates(mousePos);
 //        Debug.Log(locationOnBoard);
         Piece piece = null;
 
-        if (locationOnBoard.x >= 0 && locationOnBoard.x <= 7 && locationOnBoard.y >= 0 && locationOnBoard.y <= 7) //Have to limit these to not get an out of reach exception
-            piece = boardArray[locationOnBoard.x, locationOnBoard.y];
+        if (mousedOverBoardCoords.x >= 0 && mousedOverBoardCoords.x <= 7 && mousedOverBoardCoords.y >= 0 && mousedOverBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception
+            piece = boardArray[mousedOverBoardCoords.x, mousedOverBoardCoords.y];
 
         if (piece != null)
         {
@@ -64,7 +66,7 @@ public class Board : MonoBehaviour
             }
 //            Debug.Log("ayy lmao: " + ayylmao);
 //            Debug.Log(piece);
-//            piece.Rule();
+            piece.DeterminePossibleActions();
 
             if (Input.GetMouseButtonDown(0)) //Left click
             {
@@ -91,7 +93,7 @@ public class Board : MonoBehaviour
                 if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7)
                     testPiece = boardArray[testBoardCoords.x, testBoardCoords.y];
 
-                //Need a test for whether the move is allowed
+                //***TESTS TO DETERMINE HOW TO PROCEED
 
                 bool resetPiece = false;
                 if (testBoardCoords.x < 0 || testBoardCoords.x > 7 || testBoardCoords.y < 0 || testBoardCoords.y > 7) //Check if piece is dropped out of bounds
@@ -100,13 +102,47 @@ public class Board : MonoBehaviour
                 if (testBoardCoords == movingPiece.boardCoords) //Check if piece is dropped in the same square it started
                     resetPiece = true;
 
-                if (resetPiece) //if movement is not allowed - NOT SUFFICIENT, JUST TEST
-                {
-                    movingPiece.transform.position = UnityBoardCoordinates(movingPiece.boardCoords); //Reset piece to original position
-                }
+                if(!movingPiece.CanPieceMoveAtBoardCoords(testBoardCoords)) //Check if piece can move at board coords (based on allowedDestinations in Piece)
+                    resetPiece = true;
 
-                else if (testPiece == null) //if movement is allowed - NOT SUFFICIENT, JUST TEST
+                if (resetPiece) //If movement is not allowed, reset piece to original position
+                    movingPiece.transform.position = UnityBoardCoordinates(movingPiece.boardCoords);
+
+                //If movement is allowed and there's a piece in the way, then it must be eaten
+                if (movingPiece.CanPieceMoveAtBoardCoords(testBoardCoords) && boardArray[testBoardCoords.x, testBoardCoords.y] != null && boardArray[testBoardCoords.x, testBoardCoords.y].isWhite != movingPiece.isWhite)
+                    EatPiece(boardArray[testBoardCoords.x, testBoardCoords.y]);
+
+                //*****EN-PASSANT
+                //*****EN-PASSANT
+                //If movement was en-passant - I don't think it's sufficient as is
+                //*****EN-PASSANT
+                //*****EN-PASSANT
+
+                bool enPassantMovementPerformed = false;
+                if (movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
+                    enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.up;
+                //bool coord of pawn == position after en-passant (only way to confirm this was the chosen allowedDestinations?)
+
+                if (enPassantMovementPerformed && movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
+                    EatPiece(boardArray[movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.x, movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.y]);
+
+                //*****EN-PASSANT
+                //*****EN-PASSANT
+                //If movement was en-passant - I don't think it's sufficient as is
+                //*****EN-PASSANT
+                //*****EN-PASSANT
+                //I can put a check for pawns in the beginning of the next if statement?
+                //Need some sort of enPassant event when a pawn double moves to start
+                //or, if movingpiece is a pawn, if testBoardCoords is 2 above/below if isWhite/!isWhite, alert adjacent pawns about this being an enpassantpawn
+                //*****current setup seems to work for white pawns eating black en-passant
+                //**just need to make this possible only for the turn following the double move
+
+                if (!resetPiece) //If movement is allowed
                 {
+                    if(movingPiece.GetComponent<Pawn>() != null)
+                        CheckIfEnPassantAlertNeedsToBeSent(movingPiece.GetComponent<Pawn>(), testBoardCoords);
+
+
                     boardArray[movingPiece.boardCoords.x, movingPiece.boardCoords.y] = null; //Remove old piece from board array
                     movingPiece.transform.position = UnityBoardCoordinates(testBoardCoords); //Snap new piece to board
                     movingPiece.boardCoords = testBoardCoords;
@@ -209,4 +245,57 @@ public class Board : MonoBehaviour
     }
     #endregion
 
+    void EatPiece(Piece piece)
+    {
+        //**Would be nice to organize the eaten lists by value, and might need to manipulate z a bit to stack them nicely
+        if (piece.isWhite)
+        {
+            piece.transform.position = new Vector3(-200, 100 - eatenWhitePieces.Count * 10);
+            eatenWhitePieces.Add(piece);
+        }
+        else
+        {
+            piece.transform.position = new Vector3(200, 100 - eatenBlackPieces.Count * 10);
+            eatenBlackPieces.Add(piece);
+        }
+
+        boardArray[piece.boardCoords.x, piece.boardCoords.y] = null;
+    }
+
+    void DefinePawnLists() //Used to manage en-passant possibilities
+    {
+        //
+    }
+
+//    void HasPawnMovedIn
+
+    bool PieceIsAPawn(Piece piece)
+    {
+        //
+
+        return false;
+    }
+
+    void CheckIfEnPassantAlertNeedsToBeSent(Pawn pawn, Vector2Int testBoardCoords)
+    {
+        bool whiteEnPassantTrigger = pawn.isWhite && testBoardCoords.y - 2 == pawn.boardCoords.y;
+        bool blackEnPassantTrigger = !pawn.isWhite && testBoardCoords.y + 2 == pawn.boardCoords.y;
+        if(whiteEnPassantTrigger)
+        {
+
+        }
+        else if (blackEnPassantTrigger)
+        {
+            if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.right) != null)
+            {
+                if (boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>() != null)
+                    boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>().enPassantPawn = pawn;
+            }
+            else if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.left) != null)
+            {
+                if (boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>() != null)
+                    boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>().enPassantPawn = pawn;
+            }
+        }
+    }
 }

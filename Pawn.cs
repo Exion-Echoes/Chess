@@ -1,16 +1,27 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Pawn : Piece
 {
+    //    public delegate void enPassantPossible();
+    //    public event Action<Pawn> enPassantPossible;
+    public Pawn enPassantPawn;
+//    public bool enPassantAllowedThisTurn = false;
+
     public override void Awake()
     {
         base.Awake();
-        allowedDestinations = new Vector2Int[5]; //There are 5 things to consider with pawns
+//        allowedDestinations = new Vector2Int[5]; //There are 5 things to consider with pawns
     }
 
-    public override void Rule()
+    public void Start()
+    {
+        //sub to en passant events of enemy pawns
+    }
+
+    public override void DeterminePossibleActions()
     {
         //Pawn rules:
         //Moves one or two square forward when at its starting position, otherwise only moves one square
@@ -18,13 +29,75 @@ public class Pawn : Piece
         //Can eat pieces en-passant
         //Can turn into another piece when it reaches the end
 
-        allowedDestinations[0] = allowedDestinations[1] = boardCoords + (isWhite ? Vector2Int.up : Vector2Int.down);
+        allowedDestinations.Clear();
+
+        //**Can be made cleaner with a Vector2Int being up or down depending on isWhite = true or isWhite = false (might need isWhite checks, so i dunno anymore if it's cleaner)
+        //**Need event call when pawn reaches last row
+
+        //At the starting line, pawns can move one or two squares forward
+        if(isWhite)
+        {
+            if (boardCoords.y == 1)
+            {
+                //Check if there is a path ahead of the pawn
+                Vector2Int oneUp = boardCoords + Vector2Int.up;
+                Vector2Int twoUp = boardCoords + Vector2Int.up + Vector2Int.up;
+                if (CheckForAnEnemyPiece(oneUp) == null && !WillMovingPiecePutKingInCheck(oneUp))
+                    allowedDestinations.Add(oneUp);
+                if (CheckForAnEnemyPiece(twoUp) == null && !WillMovingPiecePutKingInCheck(twoUp))
+                    allowedDestinations.Add(twoUp);
+            }
+            else if (boardCoords.y >= 2 && boardCoords.y <= 6)
+            {
+                //Check if there is a path ahead of the pawn
+                Vector2Int oneUp = boardCoords + Vector2Int.up;
+                if (CheckForAnEnemyPiece(oneUp) == null && !WillMovingPiecePutKingInCheck(oneUp))
+                    allowedDestinations.Add(oneUp);
+            }
+
+            //Check if there are pieces that may be eaten
+            Vector2Int leftDiagonalBoardCoords = boardCoords + Vector2Int.left + Vector2Int.up;
+            Vector2Int rightDiagonalBoardCoords = boardCoords + Vector2Int.right + Vector2Int.up;
+
+            if (CheckForAnEnemyPiece(leftDiagonalBoardCoords) && !WillMovingPiecePutKingInCheck(leftDiagonalBoardCoords))
+                allowedDestinations.Add(leftDiagonalBoardCoords);
+            if (CheckForAnEnemyPiece(rightDiagonalBoardCoords) && !WillMovingPiecePutKingInCheck(rightDiagonalBoardCoords))
+                allowedDestinations.Add(rightDiagonalBoardCoords);
+
+            //Check for en-passant pawns
+            if (enPassantPawn != null && !WillMovingPiecePutKingInCheck(enPassantPawn.boardCoords + Vector2Int.up))
+                allowedDestinations.Add(enPassantPawn.boardCoords + Vector2Int.up);
+            //HAVE TO DETECT WHETHER THE ENPASSANT MOVEMENT IS POSSIBLE (DONT FORGET KING-CHECK), AND HAVE TO TELL BOARD TO EAT THE PAWN BEING EN-PASSANT'D
+            //Maybe I can make EatPiece public and call EatPiece(enPassantPawn)
+            //**Actually I can't, this should be triggered if the allowedDestinations is taken
+
+            //Check for en-passant movement - might need an event and listener (whenever a pawn double moves, it sends a signal to every other opposing pawns, allowing for an extra potential destination
+            //And it also needs to be used as a flag to call the EatPiece that's been en-passant'd
+            //***
+            //***
+            //***
+//            enPassantAllowedThisTurn = false; //Using this reseting bool, I don't have to reset the enPassantPawn variable
+        }
+
+        else if (!isWhite)
+        {
+            if (boardCoords.y == 6)
+            {
+                allowedDestinations.Add(boardCoords + Vector2Int.down);
+                allowedDestinations.Add(boardCoords + Vector2Int.down + Vector2Int.down);
+            }
+            else if (boardCoords.y >= 2 && boardCoords.y <= 6)
+                allowedDestinations.Add(boardCoords + Vector2Int.down);
+        }
+
+
+        //allowedDestinations[0] = allowedDestinations[1] = boardCoords + (isWhite ? Vector2Int.up : Vector2Int.down);
 
         //May move two squares if posOnBoard is on the starting line
-        if (isWhite && boardCoords.y == 1)
-            allowedDestinations[1] = boardCoords + new Vector2Int(0, 2);
-        else if (!isWhite && boardCoords.y == 6)
-            allowedDestinations[1] = boardCoords - new Vector2Int(0, 2);
+        //if (isWhite && boardCoords.y == 1)
+        //      allowedDestinations[1] = boardCoords + new Vector2Int(0, 2);
+        //    else if (!isWhite && boardCoords.y == 6)
+        //          allowedDestinations[1] = boardCoords - new Vector2Int(0, 2);
 
 
         //May eat diagonally left or right
@@ -39,9 +112,9 @@ public class Pawn : Piece
 
         for (int i = 0; i < 2; i++)
         {
-            Piece piece = board.boardArray[allowedDestinations[i].x, allowedDestinations[i].y];
-            if (piece != null && this.isWhite != piece.isWhite)
-                Debug.Log("At " + allowedDestinations[i] + ", " + piece + " is in the way");
+//            Piece piece = board.boardArray[allowedDestinations[i].x, allowedDestinations[i].y];
+ //           if (piece != null && this.isWhite != piece.isWhite)
+  //              Debug.Log("At " + allowedDestinations[i] + ", " + piece + " is in the way");
             //            if (board.FindPieceAtBoardCoordinate(allowedDestinations[i]) != null)
             //                allowedDestinations[i] = posOnBoard;
         }
@@ -50,5 +123,15 @@ public class Pawn : Piece
 //        Debug.Log(posOnBoard + ", " + allowedDestinations[0] + ", " + allowedDestinations[1]);
   //      for (int i = 0; i < 5; i++)
 //            Debug.Log(allowedDestinations[i]);
+    }
+
+//    public void EnPassantPossible(Pawn pawn) //En passant eating is possible with this pawn and the argument pawn
+//    {
+        //
+//    }
+    
+    public void AlertNearbyEnemyPawnsAboutEnPassant(Pawn pawn)
+    {
+        //This would be called when a successful double move is done
     }
 }

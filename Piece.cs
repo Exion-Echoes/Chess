@@ -8,7 +8,7 @@ public class Piece : MonoBehaviour
     public bool isWhite; //If false, then piece is black
     public bool beingCarried; //State of piece when it's being held by player
     public Vector2Int boardCoords; //[0,0] = A1, [0,1] = A2, etc.
-    public Vector2Int[] allowedDestinations;
+    public List<Vector2Int> allowedDestinations = new List<Vector2Int>();
 
     public Board board;
 
@@ -17,8 +17,43 @@ public class Piece : MonoBehaviour
         board = FindObjectOfType<Board>();
     }
 
-    public virtual void Rule()
+    public virtual void DeterminePossibleActions()
     {
         //
+    }
+
+    public bool CanPieceMoveAtBoardCoords(Vector2Int testBoardCoords)
+    {
+        for (int i = 0; i < allowedDestinations.Count; i++)
+        {
+            if (allowedDestinations[i] == testBoardCoords)
+            {
+                Debug.Log(i + ", " + allowedDestinations[i] + ", " + testBoardCoords);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Piece CheckForAnEnemyPiece(Vector2Int testBoardCoords)
+    {
+        if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception
+        {
+            if (board.boardArray[testBoardCoords.x, testBoardCoords.y] != null && board.boardArray[testBoardCoords.x, testBoardCoords.y].isWhite != this.isWhite)
+                return board.boardArray[testBoardCoords.x, testBoardCoords.y];
+        }
+        return null;
+    }
+
+    public bool WillMovingPiecePutKingInCheck(Vector2Int testBoardCoords)
+    {
+        //Look for checks on the king of the same color as this piece
+        //Check if simply moving the piece puts the king in check (no need to check anything else here)
+        //The king will be in check from a piece along the path opened up by the piece being moved at testBoardCoords
+
+        //Trace a line along the path opened up the piece and check board.boardArray for any pieces there, and check if they are attacking the king
+
+
+        return false;
     }
 }
