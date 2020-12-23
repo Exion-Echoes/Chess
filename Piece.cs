@@ -49,6 +49,7 @@ public class Piece : MonoBehaviour
         return false;
     }
 
+    #region FUNCTIONS TO HELP DETERMINE ALLOWED DESTINATIONS
     public Piece CheckForAnEnemyPiece(Vector2Int testBoardCoords)
     {
         if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception
@@ -59,15 +60,29 @@ public class Piece : MonoBehaviour
         return null;
     }
 
-    public bool WillMovingPiecePutKingInCheck(Vector2Int testBoardCoords)
+    public Piece CheckForAFriendlyPiece(Vector2Int testBoardCoords)
+    {
+        if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception
+        {
+            if (board.boardArray[testBoardCoords.x, testBoardCoords.y] != null && board.boardArray[testBoardCoords.x, testBoardCoords.y].isWhite == this.isWhite)
+                return board.boardArray[testBoardCoords.x, testBoardCoords.y];
+        }
+        return null;
+    }
+
+    public bool WillMovingPiecePutKingInCheck(Vector2Int oldBoardCoords, Vector2Int testBoardCoords)
     {
         //Look for checks on the king of the same color as this piece
         //Check if simply moving the piece puts the king in check (no need to check anything else here)
         //The king will be in check from a piece along the path opened up by the piece being moved at testBoardCoords
 
         //Trace a line along the path opened up the piece and check board.boardArray for any pieces there, and check if they are attacking the king
-
+        //In addition, if king is ALREADY in check, there are some potential moves that may block the check
+        //summary: 
+        //  1) function will stop pieces from moving and causing a check to their own king
+        //  2) function will allow blocking checks of their own king
 
         return false;
     }
+    #endregion
 }

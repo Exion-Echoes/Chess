@@ -35,23 +35,23 @@ public class Pawn : Piece
         //**Need event call when pawn reaches last row
 
         //At the starting line, pawns can move one or two squares forward
-        if(isWhite)
+        if (isWhite)
         {
             if (boardCoords.y == 1)
             {
                 //Check if there is a path ahead of the pawn
                 Vector2Int oneUp = boardCoords + Vector2Int.up;
                 Vector2Int twoUp = boardCoords + Vector2Int.up + Vector2Int.up;
-                if (CheckForAnEnemyPiece(oneUp) == null && !WillMovingPiecePutKingInCheck(oneUp))
+                if (CheckForAnEnemyPiece(oneUp) == null && !WillMovingPiecePutKingInCheck(boardCoords, oneUp))
                     allowedDestinations.Add(oneUp);
-                if (CheckForAnEnemyPiece(twoUp) == null && !WillMovingPiecePutKingInCheck(twoUp))
+                if (CheckForAnEnemyPiece(twoUp) == null && !WillMovingPiecePutKingInCheck(boardCoords, twoUp))
                     allowedDestinations.Add(twoUp);
             }
             else if (boardCoords.y >= 2 && boardCoords.y <= 6)
             {
                 //Check if there is a path ahead of the pawn
                 Vector2Int oneUp = boardCoords + Vector2Int.up;
-                if (CheckForAnEnemyPiece(oneUp) == null && !WillMovingPiecePutKingInCheck(oneUp))
+                if (CheckForAnEnemyPiece(oneUp) == null && !WillMovingPiecePutKingInCheck(boardCoords, oneUp))
                     allowedDestinations.Add(oneUp);
             }
 
@@ -59,37 +59,49 @@ public class Pawn : Piece
             Vector2Int leftDiagonalBoardCoords = boardCoords + Vector2Int.left + Vector2Int.up;
             Vector2Int rightDiagonalBoardCoords = boardCoords + Vector2Int.right + Vector2Int.up;
 
-            if (CheckForAnEnemyPiece(leftDiagonalBoardCoords) && !WillMovingPiecePutKingInCheck(leftDiagonalBoardCoords))
+            if (CheckForAnEnemyPiece(leftDiagonalBoardCoords) != null && !WillMovingPiecePutKingInCheck(boardCoords, leftDiagonalBoardCoords))
                 allowedDestinations.Add(leftDiagonalBoardCoords);
-            if (CheckForAnEnemyPiece(rightDiagonalBoardCoords) && !WillMovingPiecePutKingInCheck(rightDiagonalBoardCoords))
+            if (CheckForAnEnemyPiece(rightDiagonalBoardCoords) != null && !WillMovingPiecePutKingInCheck(boardCoords, rightDiagonalBoardCoords))
                 allowedDestinations.Add(rightDiagonalBoardCoords);
 
             //Check for en-passant pawns
-            if (enPassantPawn != null && !WillMovingPiecePutKingInCheck(enPassantPawn.boardCoords + Vector2Int.up))
+            if (enPassantPawn != null && !WillMovingPiecePutKingInCheck(boardCoords, enPassantPawn.boardCoords + Vector2Int.up))
                 allowedDestinations.Add(enPassantPawn.boardCoords + Vector2Int.up);
-
         }
 
         else if (!isWhite)
         {
             if (boardCoords.y == 6)
             {
-                allowedDestinations.Add(boardCoords + Vector2Int.down);
-                allowedDestinations.Add(boardCoords + Vector2Int.down + Vector2Int.down);
+                //Check if there is a path ahead of the pawn
+                Vector2Int oneDown = boardCoords + Vector2Int.down;
+                Vector2Int twoDown = boardCoords + Vector2Int.down + Vector2Int.down;
+                if (CheckForAnEnemyPiece(oneDown) == null && !WillMovingPiecePutKingInCheck(boardCoords, oneDown))
+                    allowedDestinations.Add(oneDown);
+                if (CheckForAnEnemyPiece(twoDown) == null && !WillMovingPiecePutKingInCheck(boardCoords, twoDown))
+                    allowedDestinations.Add(twoDown);
             }
             else if (boardCoords.y >= 2 && boardCoords.y <= 6)
-                allowedDestinations.Add(boardCoords + Vector2Int.down);
+            {
+                //Check if there is a path ahead of the pawn
+                Vector2Int oneDown = boardCoords + Vector2Int.down;
+                if (CheckForAnEnemyPiece(oneDown) == null && !WillMovingPiecePutKingInCheck(boardCoords, oneDown))
+                    allowedDestinations.Add(oneDown);
+            }
+
+            //Check if there are pieces that may be eaten
+            Vector2Int leftDiagonalBoardCoords = boardCoords + Vector2Int.left + Vector2Int.down;
+            Vector2Int rightDiagonalBoardCoords = boardCoords + Vector2Int.right + Vector2Int.down;
+
+            if (CheckForAnEnemyPiece(leftDiagonalBoardCoords) != null && !WillMovingPiecePutKingInCheck(boardCoords, leftDiagonalBoardCoords))
+                allowedDestinations.Add(leftDiagonalBoardCoords);
+            if (CheckForAnEnemyPiece(rightDiagonalBoardCoords) != null && !WillMovingPiecePutKingInCheck(boardCoords, rightDiagonalBoardCoords))
+                allowedDestinations.Add(rightDiagonalBoardCoords);
+
+            //Check for en-passant pawns
+            if (enPassantPawn != null && !WillMovingPiecePutKingInCheck(boardCoords, enPassantPawn.boardCoords + Vector2Int.down))
+                allowedDestinations.Add(enPassantPawn.boardCoords + Vector2Int.down);
         }
-
-
-        //allowedDestinations[0] = allowedDestinations[1] = boardCoords + (isWhite ? Vector2Int.up : Vector2Int.down);
-
-        //May move two squares if posOnBoard is on the starting line
-        //if (isWhite && boardCoords.y == 1)
-        //      allowedDestinations[1] = boardCoords + new Vector2Int(0, 2);
-        //    else if (!isWhite && boardCoords.y == 6)
-        //          allowedDestinations[1] = boardCoords - new Vector2Int(0, 2);
-
 
         //May eat diagonally left or right
 
@@ -100,29 +112,30 @@ public class Pawn : Piece
         //Check if there is a piece blocking the allowed destinations
 
         //Check if moving the pawn will put its King in check
-
-        for (int i = 0; i < 2; i++)
-        {
-//            Piece piece = board.boardArray[allowedDestinations[i].x, allowedDestinations[i].y];
- //           if (piece != null && this.isWhite != piece.isWhite)
-  //              Debug.Log("At " + allowedDestinations[i] + ", " + piece + " is in the way");
-            //            if (board.FindPieceAtBoardCoordinate(allowedDestinations[i]) != null)
-            //                allowedDestinations[i] = posOnBoard;
-        }
-
-
-//        Debug.Log(posOnBoard + ", " + allowedDestinations[0] + ", " + allowedDestinations[1]);
-  //      for (int i = 0; i < 5; i++)
-//            Debug.Log(allowedDestinations[i]);
     }
 
-//    public void EnPassantPossible(Pawn pawn) //En passant eating is possible with this pawn and the argument pawn
-//    {
-        //
-//    }
-    
-    public void AlertNearbyEnemyPawnsAboutEnPassant(Pawn pawn)
+    public void CheckIfEnPassantAlertNeedsToBeSent(Pawn pawn, Vector2Int testBoardCoords)
     {
-        //This would be called when a successful double move is done
+        bool whiteEnPassantTrigger = pawn.isWhite && testBoardCoords.y - 2 == pawn.boardCoords.y;
+        bool blackEnPassantTrigger = !pawn.isWhite && testBoardCoords.y + 2 == pawn.boardCoords.y;
+        if (whiteEnPassantTrigger || blackEnPassantTrigger)
+        {
+            if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.right) != null)
+            {
+                if (board.boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>() != null)
+                {
+                    board.boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>().enPassantPawn = pawn;
+                    board.pawnThatMayEatEnPassant = board.boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>();
+                }
+            }
+            else if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.left) != null)
+            {
+                if (board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>() != null)
+                {
+                    board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>().enPassantPawn = pawn;
+                    board.pawnThatMayEatEnPassant = board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>();
+                }
+            }
+        }
     }
 }

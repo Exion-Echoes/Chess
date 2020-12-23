@@ -22,7 +22,7 @@ public class Board : MonoBehaviour
     public Piece movingPiece;
     public List<Piece> eatenWhitePieces = new List<Piece>();
     public List<Piece> eatenBlackPieces = new List<Piece>();
-    Pawn pawnThatMayEatEnPassant;
+    public Pawn pawnThatMayEatEnPassant;
 
     //Board highlights of which piece last moved and where a picked piece can move
     GameObject[] destinationTraces = new GameObject[9];
@@ -74,11 +74,10 @@ public class Board : MonoBehaviour
                 Debug.Log("Grabbed " + piece);
                 movingPiece = piece;
                 piece.beingCarried = true;
-                if (pawnThatMayEatEnPassant != null && (piece.pawn == null || (piece.pawn != null && piece.pawn != pawnThatMayEatEnPassant)))
-                {
-                    pawnThatMayEatEnPassant.enPassantPawn = null;
-                    pawnThatMayEatEnPassant = null;
-                }
+
+                //****HAVE TO CHANGE TWO THINGS WHEN GRABBING PIECES:
+                //  1) CHANGE THE Z VALUE A BIT SO THE PICKED UP PIECE ALWAYS APPEARS IN FRONT
+                //  2) FIX THE BUG WHERE LEFT PIECES CAN BE GRABBED FROM THE (-1, y) SQUARES
             }
         }
     }
@@ -120,22 +119,42 @@ public class Board : MonoBehaviour
 
                 bool enPassantMovementPerformed = false;
                 if (movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
-                    enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.up;
+                {
+                    if (movingPiece.isWhite)
+                        enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.up;
+                    else
+                        enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.down;
+                }
                 //bool coord of pawn == position after en-passant (only way to confirm this was the chosen allowedDestinations?)
 
                 if (enPassantMovementPerformed && movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
                     EatPiece(boardArray[movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.x, movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.y]);
 
+                //Check if en passant flag must be reset:
+                bool notAPawn = pawnThatMayEatEnPassant != null && !resetPiece && movingPiece.pawn == null;
+                bool notTheSamePawn = pawnThatMayEatEnPassant != null && !resetPiece && movingPiece.pawn != null && movingPiece.pawn != pawnThatMayEatEnPassant;
+                if (notAPawn || notTheSamePawn)
+                {
+                    pawnThatMayEatEnPassant.enPassantPawn = null;
+                    pawnThatMayEatEnPassant = null;
+                }
 
                 if (!resetPiece) //If movement is allowed
                 {
-                    if(movingPiece.GetComponent<Pawn>() != null)
-                        CheckIfEnPassantAlertNeedsToBeSent(movingPiece.GetComponent<Pawn>(), testBoardCoords);
+                    if (movingPiece.GetComponent<Pawn>() != null)
+                        movingPiece.pawn.CheckIfEnPassantAlertNeedsToBeSent(movingPiece.GetComponent<Pawn>(), testBoardCoords);
 
                     boardArray[movingPiece.boardCoords.x, movingPiece.boardCoords.y] = null; //Remove old piece from board array
                     movingPiece.transform.position = UnityBoardCoordinates(testBoardCoords); //Snap new piece to board
                     movingPiece.boardCoords = testBoardCoords;
                     boardArray[testBoardCoords.x, testBoardCoords.y] = movingPiece; //Add new piece to board array
+                }
+
+                bool afterThePawnMoved = pawnThatMayEatEnPassant != null && !resetPiece && movingPiece.pawn != null && movingPiece.pawn == pawnThatMayEatEnPassant;
+                if(afterThePawnMoved)
+                {
+                    pawnThatMayEatEnPassant.enPassantPawn = null;
+                    pawnThatMayEatEnPassant = null;
                 }
 
                 movingPiece.beingCarried = false;
@@ -263,30 +282,5 @@ public class Board : MonoBehaviour
         //
 
         return false;
-    }
-
-    void CheckIfEnPassantAlertNeedsToBeSent(Pawn pawn, Vector2Int testBoardCoords)
-    {
-        bool whiteEnPassantTrigger = pawn.isWhite && testBoardCoords.y - 2 == pawn.boardCoords.y;
-        bool blackEnPassantTrigger = !pawn.isWhite && testBoardCoords.y + 2 == pawn.boardCoords.y;
-        if(whiteEnPassantTrigger || blackEnPassantTrigger)
-        {
-            if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.right) != null)
-            {
-                if (boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>() != null)
-                {
-                    boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>().enPassantPawn = pawn;
-                    pawnThatMayEatEnPassant = boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>();
-                }
-            }
-            else if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.left) != null)
-            {
-                if (boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>() != null)
-                {
-                    boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>().enPassantPawn = pawn;
-                    pawnThatMayEatEnPassant = boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>();
-                }
-            }
-        }
     }
 }
