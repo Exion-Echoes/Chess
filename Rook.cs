@@ -15,97 +15,34 @@ public class Rook : Piece
         int travelDistanceRight = 7 - boardCoords.x;
         int travelDistanceLeft = boardCoords.x;
 
-        for (int i = 1; i <= travelDistanceUp; i++)
+        DetermineAllowedDestinations(new Vector2Int(0, 1), travelDistanceUp);
+        DetermineAllowedDestinations(new Vector2Int(0, -1), travelDistanceDown);
+        DetermineAllowedDestinations(new Vector2Int(1, 0), travelDistanceRight);
+        DetermineAllowedDestinations(new Vector2Int(-1, 0), travelDistanceLeft);
+    }
+
+    void DetermineAllowedDestinations(Vector2Int testDirection, int travelDistance)
+    {
+        for (int i = 1; i <= travelDistance; i++)
         {
-            Vector2Int iSquareUp = new Vector2Int(boardCoords.x, boardCoords.y + i);
-            if (iSquareUp.x >= 0 && iSquareUp.x <= 7 && iSquareUp.y >= 0 && iSquareUp.y <= 7) //Have to limit these to not get an out of reach exception 
+            Vector2Int testBoardCoords = boardCoords + new Vector2Int(testDirection.x * i, testDirection.y * i);
+            if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception 
             {
-                if (!WillMovingPiecePutKingInCheck(boardCoords, iSquareUp))
+                if (!WillMovingPiecePutKingInCheck(boardCoords, testBoardCoords))
                 {
-                    if (CheckForAnEnemyPiece(iSquareUp) != null)
+                    if (CheckForAnEnemyPiece(testBoardCoords) != null)
                     {
-                        allowedDestinations.Add(iSquareUp);
-                        break; //Rook can eat this piece, but can't move farther
+                        allowedDestinations.Add(testBoardCoords);
+                        break; //Queen can eat this piece, but can't move farther
                     }
 
-                    else if (CheckForAFriendlyPiece(iSquareUp) != null)
-                        break; //Rook has to stop before this piece, so no other allowed destination is added
+                    else if (CheckForAFriendlyPiece(testBoardCoords) != null)
+                        break; //Queen has to stop before this piece, so no other allowed destination is added
 
-                    else if (CheckForAnEnemyPiece(iSquareUp) == null && CheckForAFriendlyPiece(iSquareUp) == null)
-                        allowedDestinations.Add(iSquareUp);
+                    else if (CheckForAnEnemyPiece(testBoardCoords) == null && CheckForAFriendlyPiece(testBoardCoords) == null)
+                        allowedDestinations.Add(testBoardCoords);
                 }
             }
         }
-
-        for(int i = 1; i <= travelDistanceDown; i++)
-        {
-            Vector2Int iSquareDown = new Vector2Int(boardCoords.x, boardCoords.y - i);
-            if (iSquareDown.x >= 0 && iSquareDown.x <= 7 && iSquareDown.y >= 0 && iSquareDown.y <= 7) //Have to limit these to not get an out of reach exception 
-            {
-//                Debug.Log("BEFORE DOUBLE IF " + i + ", " + board.boardArray[boardCoords.x, boardCoords.y - i] + ", " + CheckForAnEnemyPiece(iSquareDown) + ", " + !WillMovingPiecePutKingInCheck(iSquareDown));
-                if (!WillMovingPiecePutKingInCheck(boardCoords, iSquareDown))
-                {
-//                    Debug.Log(i + ", " + board.boardArray[boardCoords.x, boardCoords.y - i] + ", " + CheckForAnEnemyPiece(iSquareDown) + ": enemy, friend : " + CheckForAFriendlyPiece(iSquareDown) + ", " + !WillMovingPiecePutKingInCheck(iSquareDown));
-
-                    if (CheckForAnEnemyPiece(iSquareDown) != null)
-                    {
-                        allowedDestinations.Add(iSquareDown);
-                        break; //Rook can eat this piece, but can't move farther
-                    }
-
-                    else if (CheckForAFriendlyPiece(iSquareDown) != null)
-                        break; //Rook has to stop before this piece, so no other allowed destination is added
-
-                    else if(CheckForAnEnemyPiece(iSquareDown) == null && CheckForAFriendlyPiece(iSquareDown) == null)
-                        allowedDestinations.Add(iSquareDown);
-//                    Debug.Log(i + ", " + board.boardArray[boardCoords.x, boardCoords.y - i] + ", " + CheckForAnEnemyPiece(iSquareDown) + ", " + !WillMovingPiecePutKingInCheck(iSquareDown));
-                }
-            }
-        }
-
-        for (int i = 1; i <= travelDistanceRight; i++)
-        {
-            Vector2Int iSquareRight = new Vector2Int(boardCoords.x + i, boardCoords.y);
-            if (iSquareRight.x >= 0 && iSquareRight.x <= 7 && iSquareRight.y >= 0 && iSquareRight.y <= 7) //Have to limit these to not get an out of reach exception 
-            {
-                if (!WillMovingPiecePutKingInCheck(boardCoords, iSquareRight))
-                {
-                    if (CheckForAnEnemyPiece(iSquareRight) != null)
-                    {
-                        allowedDestinations.Add(iSquareRight);
-                        break; //Rook can eat this piece, but can't move farther
-                    }
-
-                    else if (CheckForAFriendlyPiece(iSquareRight) != null)
-                        break; //Rook has to stop before this piece, so no other allowed destination is added
-
-                    else if (CheckForAnEnemyPiece(iSquareRight) == null && CheckForAFriendlyPiece(iSquareRight) == null)
-                        allowedDestinations.Add(iSquareRight);
-                }
-            }
-        }
-
-        for (int i = 1; i <= travelDistanceLeft; i++)
-        {
-            Vector2Int iSquareLeft = new Vector2Int(boardCoords.x - i, boardCoords.y);
-            if (iSquareLeft.x >= 0 && iSquareLeft.x <= 7 && iSquareLeft.y >= 0 && iSquareLeft.y <= 7) //Have to limit these to not get an out of reach exception 
-            {
-                if (!WillMovingPiecePutKingInCheck(boardCoords, iSquareLeft))
-                {
-                    if (CheckForAnEnemyPiece(iSquareLeft) != null)
-                    {
-                        allowedDestinations.Add(iSquareLeft);
-                        break; //Rook can eat this piece, but can't move farther
-                    }
-
-                    else if (CheckForAFriendlyPiece(iSquareLeft) != null)
-                        break; //Rook has to stop before this piece, so no other allowed destination is added
-
-                    else if (CheckForAnEnemyPiece(iSquareLeft) == null && CheckForAFriendlyPiece(iSquareLeft) == null)
-                        allowedDestinations.Add(iSquareLeft);
-                }
-            }
-        }
-
     }
 }

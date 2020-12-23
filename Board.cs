@@ -47,7 +47,7 @@ public class Board : MonoBehaviour
     void CheckForMouseClick()
     {
         Vector2Int mousedOverBoardCoords = BoardCoordinates(mousePos);
-//        Debug.Log(locationOnBoard);
+        Debug.Log(mousedOverBoardCoords);
         Piece piece = null;
 
         if (mousedOverBoardCoords.x >= 0 && mousedOverBoardCoords.x <= 7 && mousedOverBoardCoords.y >= 0 && mousedOverBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception
@@ -74,10 +74,6 @@ public class Board : MonoBehaviour
                 Debug.Log("Grabbed " + piece);
                 movingPiece = piece;
                 piece.beingCarried = true;
-
-                //****HAVE TO CHANGE TWO THINGS WHEN GRABBING PIECES:
-                //  1) CHANGE THE Z VALUE A BIT SO THE PICKED UP PIECE ALWAYS APPEARS IN FRONT
-                //  2) FIX THE BUG WHERE LEFT PIECES CAN BE GRABBED FROM THE (-1, y) SQUARES
             }
         }
     }
@@ -86,7 +82,7 @@ public class Board : MonoBehaviour
     {
         if (movingPiece != null)
         {
-            movingPiece.transform.position = new Vector3(mousePos.x, mousePos.y, -1); //Make the piece move along the cursor
+            movingPiece.transform.position = new Vector3(mousePos.x, mousePos.y, -2); //Make the piece move along the cursor
 
             if(Input.GetMouseButtonUp(0)) //Drop piece onto board if it's in an allowed place, otherwise reset to original position
             {
@@ -158,6 +154,7 @@ public class Board : MonoBehaviour
                 }
 
                 movingPiece.beingCarried = false;
+                movingPiece.transform.position = new Vector3(movingPiece.transform.position.x, movingPiece.transform.position.y, -1);
                 movingPiece = null;
             }
         }
@@ -171,11 +168,17 @@ public class Board : MonoBehaviour
 
     public Vector2Int BoardCoordinates(Vector3 pos) //Translates Unity units into board coordinates
     {
-        int i = (int)(pos.x + 120) / 30;
-        int j = (int)(pos.y + 120) / 30;
+        //**if statements guarantee that clicks are only recognized when inside the board (would have to change "120" if board size changes)
+        int i = -1;
+        int j = -1;
+        if(pos.x + 120 >= 0)
+            i = (int)(pos.x + 120) / 30;
+        if(pos.y + 120 >= 0)
+            j = (int)(pos.y + 120) / 30;
 
         return new Vector2Int(i, j);
     }
+
     Vector3 UnityBoardCoordinates(Vector2Int boardCoords) //Translates board coords (A1, A2, etc) to Unity units
     {
         return new Vector3(-105 + boardCoords.x * 30, -105 + boardCoords.y * 30, -1);

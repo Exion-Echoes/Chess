@@ -79,7 +79,7 @@ public class Piece : MonoBehaviour
         //Trace a line along the path opened up the piece and check board.boardArray for any pieces there, and check if they are attacking the king
         //In addition, if king is ALREADY in check, there are some potential moves that may block the check
         //summary: 
-        //  1) function will stop pieces from moving and causing a check to their own king
+        //  1) function will stop pieces from moving and causing a check to their own king (will happen by default, if king is already in check and move doesn't fix that)
         //  2) function will allow blocking checks of their own king
 
         return false;
