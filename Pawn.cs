@@ -7,8 +7,9 @@ public class Pawn : Piece
 {
     //    public delegate void enPassantPossible();
     //    public event Action<Pawn> enPassantPossible;
+    [HideInInspector]
+    public bool onStartingLine; //Used to help turn on en passant flag
     public Pawn enPassantPawn;
-//    public bool enPassantAllowedThisTurn = false;
 
     public override void Awake()
     {
@@ -24,6 +25,7 @@ public class Pawn : Piece
         //Can turn into another piece when it reaches the end
 
         allowedDestinations.Clear();
+        onStartingLine = false;
 
         //**Can be made cleaner with a Vector2Int being up or down depending on isWhite = true or isWhite = false (might need isWhite checks, so i dunno anymore if it's cleaner)
         //**Need event call when pawn reaches last row
@@ -33,6 +35,7 @@ public class Pawn : Piece
         {
             if (boardCoords.y == 1)
             {
+                onStartingLine = true;
                 //Check if there is a path ahead of the pawn
                 Vector2Int oneUp = boardCoords + Vector2Int.up;
                 Vector2Int twoUp = boardCoords + Vector2Int.up + Vector2Int.up;
@@ -59,7 +62,7 @@ public class Pawn : Piece
                 allowedDestinations.Add(rightDiagonalBoardCoords);
 
             //Check for en-passant pawns
-            if (enPassantPawn != null && !WillMovingPiecePutKingInCheck(boardCoords, enPassantPawn.boardCoords + Vector2Int.up))
+            if(enPassantPawn != null && !WillMovingPiecePutKingInCheck(boardCoords, enPassantPawn.boardCoords + Vector2Int.up))
                 allowedDestinations.Add(enPassantPawn.boardCoords + Vector2Int.up);
         }
 
@@ -67,6 +70,7 @@ public class Pawn : Piece
         {
             if (boardCoords.y == 6)
             {
+                onStartingLine = true;
                 //Check if there is a path ahead of the pawn
                 Vector2Int oneDown = boardCoords + Vector2Int.down;
                 Vector2Int twoDown = boardCoords + Vector2Int.down + Vector2Int.down;
@@ -108,31 +112,6 @@ public class Pawn : Piece
         //Check if moving the pawn will put its King in check
     }
 
-    public void CheckIfEnPassantAlertNeedsToBeSent(Pawn pawn, Vector2Int testBoardCoords)
-    {
-        bool whiteEnPassantTrigger = pawn.isWhite && testBoardCoords.y - 2 == pawn.boardCoords.y;
-        bool blackEnPassantTrigger = !pawn.isWhite && testBoardCoords.y + 2 == pawn.boardCoords.y;
-        if (whiteEnPassantTrigger || blackEnPassantTrigger)
-        {
-            if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.right) != null)
-            {
-                if (board.boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>() != null)
-                {
-                    board.boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>().enPassantPawn = pawn;
-                    board.pawnThatMayEatEnPassant = board.boardArray[(testBoardCoords + Vector2Int.right).x, (testBoardCoords + Vector2Int.right).y].GetComponent<Pawn>();
-                }
-            }
-            else if (pawn.CheckForAnEnemyPiece(testBoardCoords + Vector2Int.left) != null)
-            {
-                if (board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>() != null)
-                {
-                    board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>().enPassantPawn = pawn;
-                    board.pawnThatMayEatEnPassant = board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>();
-                }
-            }
-        }
-    }
-
     public override void CheckIfThisPieceChecksOpposingKing()
     {
         Vector2Int[] testBoardCoords = new Vector2Int[2];
@@ -158,6 +137,24 @@ public class Pawn : Piece
                     break;
                 }
             }
+        }
+    }
+
+    public void EnPassantFlags(Vector2Int dropPos)
+    {
+        Piece leftPiece = board.PieceOnBoard(dropPos - Vector2Int.right);
+        Piece rightPiece = board.PieceOnBoard(dropPos + Vector2Int.right);
+        if (leftPiece != null && leftPiece.isAPawn != null && leftPiece.isWhite != isWhite)
+        {
+//            Debug.Log("turn on en passant flag of " + leftPiece);
+            leftPiece.isAPawn.enPassantPawn = this;
+            board.pawnsThatMayEatEnPassant.Add(leftPiece.isAPawn);
+        }
+        if (rightPiece != null && rightPiece.isAPawn != null && rightPiece.isWhite != isWhite)
+        {
+//            Debug.Log("turn on en passant flag of " + rightPiece);
+            rightPiece.isAPawn.enPassantPawn = this;
+            board.pawnsThatMayEatEnPassant.Add(rightPiece.isAPawn);
         }
     }
 }

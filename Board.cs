@@ -22,8 +22,8 @@ public class Board : MonoBehaviour
     public Piece movingPiece;
     public List<Piece> eatenWhitePieces = new List<Piece>(); //REPLACE THIS BY BOOL - isOnBoard
     public List<Piece> eatenBlackPieces = new List<Piece>();
-    public Pawn pawnThatMayEatEnPassant;
     public King wKing, bKing;
+    public List<Pawn> pawnsThatMayEatEnPassant; //List is reset after each move
 
     //Board highlights of which piece last moved and where a picked piece can move
     GameObject[] destinationTraces = new GameObject[28];
@@ -87,78 +87,7 @@ public class Board : MonoBehaviour
             {
                 movingPiece.DropOnBoard(BoardCoordinates(mousePos));
 
-                Debug.Log("LET GO of " + movingPiece);
-                Vector2Int testBoardCoords = BoardCoordinates (mousePos); //Where piece is dropped
-                Debug.Log(testBoardCoords);
-
-//                Piece testPiece = null;
-//                if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7)
-//                    testPiece = boardArray[testBoardCoords.x, testBoardCoords.y];
-
-                //***TESTS TO DETERMINE HOW TO PROCEED
-                //***TESTS TO DETERMINE HOW TO PROCEED
-                //***I THINK SOME OF THESE ARE REDUNDANT, AS I'M ALREADY DOING SOME CHECKS IN THE PAWN LOGIC, BY CHECKING FOR ALLOWED DESTINATIONS
-                //***TESTS TO DETERMINE HOW TO PROCEED
-                //***TESTS TO DETERMINE HOW TO PROCEED
-
-                bool resetPiece = false;
-                if (testBoardCoords.x < 0 || testBoardCoords.x > 7 || testBoardCoords.y < 0 || testBoardCoords.y > 7) //Check if piece is dropped out of bounds
-                    resetPiece = true;//
-
-                if (testBoardCoords == movingPiece.boardCoords) //Check if piece is dropped in the same square it started
-                    resetPiece = true;//
-
-                if(!movingPiece.CanPieceMoveAtBoardCoords(testBoardCoords)) //Check if piece can move at board coords (based on allowedDestinations in Piece)
-                    resetPiece = true;//
-
-  //              if (resetPiece) //If movement is not allowed, reset piece to original position
-//                    movingPiece.transform.position = UnityBoardCoordinates(movingPiece.boardCoords);
-
-                //If movement is allowed and there's a piece in the way, then it must be eaten
-//                if (movingPiece.CanPieceMoveAtBoardCoords(testBoardCoords) && boardArray[testBoardCoords.x, testBoardCoords.y] != null && boardArray[testBoardCoords.x, testBoardCoords.y].isWhite != movingPiece.isWhite)
-  //                  EatPiece(boardArray[testBoardCoords.x, testBoardCoords.y]);
-
-                bool enPassantMovementPerformed = false;
-                if (movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
-                {
-                    if (movingPiece.isWhite)
-                        enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.up;
-                    else
-                        enPassantMovementPerformed = testBoardCoords == movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords + Vector2Int.down;
-                }
-                //bool coord of pawn == position after en-passant (only way to confirm this was the chosen allowedDestinations?)
-
-                if (enPassantMovementPerformed && movingPiece.GetComponent<Pawn>() != null && movingPiece.GetComponent<Pawn>().enPassantPawn != null)
-                    EatPiece(boardArray[movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.x, movingPiece.GetComponent<Pawn>().enPassantPawn.boardCoords.y]);
-
-                //Check if en passant flag must be reset:
-                bool notAPawn = pawnThatMayEatEnPassant != null && !resetPiece && movingPiece.isAPawn == null;
-                bool notTheSamePawn = pawnThatMayEatEnPassant != null && !resetPiece && movingPiece.isAPawn != null && movingPiece.isAPawn != pawnThatMayEatEnPassant;
-                if (notAPawn || notTheSamePawn)
-                {
-                    pawnThatMayEatEnPassant.enPassantPawn = null;
-                    pawnThatMayEatEnPassant = null;
-                }
-
-                if (!resetPiece) //If movement is allowed
-                {
-                    if (movingPiece.GetComponent<Pawn>() != null)
-                        movingPiece.isAPawn.CheckIfEnPassantAlertNeedsToBeSent(movingPiece.GetComponent<Pawn>(), testBoardCoords);
-
-                    boardArray[movingPiece.boardCoords.x, movingPiece.boardCoords.y] = null; //Remove old piece from board array
-                    movingPiece.transform.position = UnityBoardCoordinates(testBoardCoords); //Snap new piece to board
-                    movingPiece.pastBoardCoords = movingPiece.boardCoords;
-                    movingPiece.boardCoords = testBoardCoords;
-                    boardArray[testBoardCoords.x, testBoardCoords.y] = movingPiece; //Add new piece to board array
-                }
-
-                bool afterThePawnMoved = pawnThatMayEatEnPassant != null && !resetPiece && movingPiece.isAPawn != null && movingPiece.isAPawn == pawnThatMayEatEnPassant;
-                if(afterThePawnMoved)
-                {
-                    pawnThatMayEatEnPassant.enPassantPawn = null;
-                    pawnThatMayEatEnPassant = null;
-                }
-
+//                CleanUpBoardDisplay();
                 movingPiece.beingCarried = false;
                 movingPiece.transform.position = new Vector3(movingPiece.transform.position.x, movingPiece.transform.position.y, -1);
                 movingPiece.CheckIfMovingPutOpposingKingOnCheck();
@@ -275,7 +204,7 @@ public class Board : MonoBehaviour
     }
     #endregion
 
-    void EatPiece(Piece piece)
+    public void EatPiece(Piece piece)
     {
         //**Would be nice to organize the eaten lists by value, and might need to manipulate z a bit to stack them nicely
         if (piece.isWhite)
@@ -290,5 +219,28 @@ public class Board : MonoBehaviour
         }
 
         boardArray[piece.boardCoords.x, piece.boardCoords.y] = null;
+    }
+
+    public Piece PieceOnBoard(Vector2Int pos)
+    {
+        if(pos.x >= 0 && pos.x <= 7 && pos.y >= 0 && pos.y <= 7)
+            return boardArray[pos.x, pos.y];
+        return null;
+    }
+
+    public void ResetEnPassantPawns()
+    {
+        for (int i = 0; i < pawnsThatMayEatEnPassant.Count; i++)
+            pawnsThatMayEatEnPassant[i].enPassantPawn = null;
+        pawnsThatMayEatEnPassant.Clear();
+    }
+
+    public void UpdatePieceOnBoard(Vector2Int testBoardCoords)
+    {
+        boardArray[movingPiece.boardCoords.x, movingPiece.boardCoords.y] = null; //Remove old piece from board array
+        movingPiece.transform.position = UnityBoardCoordinates(testBoardCoords); //Snap new piece to board
+        movingPiece.pastBoardCoords = movingPiece.boardCoords;
+        movingPiece.boardCoords = testBoardCoords;
+        boardArray[testBoardCoords.x, testBoardCoords.y] = movingPiece; //Add new piece to board array
     }
 }

@@ -12,7 +12,7 @@ public class Piece : MonoBehaviour
     public List<Vector2Int> allowedDestinations = new List<Vector2Int>();
     public bool isOnBoard;
 
-    public Board board; //This can be made into a singleton
+    public Board board;
     [HideInInspector]
     public King king;
     [HideInInspector]
@@ -21,13 +21,13 @@ public class Piece : MonoBehaviour
     [HideInInspector]
     public Pawn isAPawn;
     [HideInInspector]
-    public Rook rook;
+    public Rook isARook;
     [HideInInspector]
-    public Queen queen;
+    public Queen isAQueen;
     [HideInInspector]
-    public Bishop bishop;
+    public Bishop isABishop;
     [HideInInspector]
-    public Knight knight;
+    public Knight isAKnight;
     [HideInInspector]
     public King isAKing;
 
@@ -36,11 +36,13 @@ public class Piece : MonoBehaviour
         board = FindObjectOfType<Board>();
 
         isAPawn = GetComponent<Pawn>();
-        rook = GetComponent<Rook>();
-        knight = GetComponent<Knight>();
-        bishop = GetComponent<Bishop>();
-        queen = GetComponent<Queen>();
         isAKing = GetComponent<King>();
+
+        //Might not need these ones below - in which case i can delete them
+        isARook = GetComponent<Rook>();
+        isAKnight = GetComponent<Knight>();
+        isABishop = GetComponent<Bishop>();
+        isAQueen = GetComponent<Queen>();
     }
 
     public void Start()
@@ -59,7 +61,7 @@ public class Piece : MonoBehaviour
 
     public virtual void DeterminePossibleActions()
     {
-        //
+        //In addition to standard movement, this function forbids movement when it leads to own king being checked
     }
 
     public bool CanPieceMoveAtBoardCoords(Vector2Int testBoardCoords)
@@ -67,10 +69,11 @@ public class Piece : MonoBehaviour
         for (int i = 0; i < allowedDestinations.Count; i++)
         {
             if (allowedDestinations[i] == testBoardCoords)
-            {
-//                Debug.Log(i + ", " + allowedDestinations[i] + ", " + testBoardCoords);
                 return true;
-            }
+//            {
+                //                Debug.Log(i + ", " + allowedDestinations[i] + ", " + testBoardCoords);
+                //                return true;
+  //          }
         }
         return false;
     }
@@ -150,25 +153,47 @@ public class Piece : MonoBehaviour
     }
     #endregion
 
-    public virtual void DropOnBoard(Vector2Int posOnBoard)
+    public virtual void DropOnBoard(Vector2Int dropPos)
     {
-        bool canPieceMoveAtBoardCoords = CanPieceMoveAtBoardCoords(posOnBoard);
-        //Check if piece has to be reset to original position
+        bool canPieceMoveAtBoardCoords = CanPieceMoveAtBoardCoords(dropPos);
+        Piece pieceAtPos = board.boardArray[dropPos.x, dropPos.y];
+        bool enPassantAllowed = isAPawn != null && isAPawn.enPassantPawn != null;
 
-        //Check if piece can't be dropped at the given position:
-        //  Where it can't move, outside the board, and where it started
-        if (!canPieceMoveAtBoardCoords || posOnBoard.x < 0 || posOnBoard.x > 7 || posOnBoard.y < 0 || posOnBoard.y > 7 || posOnBoard == boardCoords)
-        {
-            Debug.Log("Piece reset");
+        //Check if piece can't be dropped at the given position: (1) where it can't move, (2) outside the board, (3) and where it started
+        if (!canPieceMoveAtBoardCoords || dropPos.x < 0 || dropPos.x > 7 || dropPos.y < 0 || dropPos.y > 7 || dropPos == boardCoords)
             transform.position = board.UnityBoardCoordinates(boardCoords);
-            return;
-            //Reset piece and call return; to leave this function
+
+        //Eat piece if there's an enemy piece in the pos
+        else if (canPieceMoveAtBoardCoords && (pieceAtPos != null || enPassantAllowed)) //If piece can move on the piece, then the latter must be an enemy's// && pieceAtPos.isWhite != isWhite)
+        {
+            if (pieceAtPos != null)
+                board.EatPiece(pieceAtPos);
+            else if (enPassantAllowed)
+                board.EatPiece(isAPawn.enPassantPawn);
+
+            board.UpdatePieceOnBoard(dropPos);
+            board.ResetEnPassantPawns(); //Must be called after a succesful action
         }
 
-        //If movement is allowed and there's a piece in the way, then it must be eaten
-        if (movingPiece.CanPieceMoveAtBoardCoords(testBoardCoords) && boardArray[testBoardCoords.x, testBoardCoords.y] != null && boardArray[testBoardCoords.x, testBoardCoords.y].isWhite != movingPiece.isWhite)
-            EatPiece(boardArray[testBoardCoords.x, testBoardCoords.y]);
+        //If no piece is eaten and movement is allowed
+        else
+        {
+            //After a succesful action (which it will be, when making it here in the function), reset flags on pawns that could move en-passant, if there were any
+            board.ResetEnPassantPawns();
 
+            //If this piece is a pawn, have to check if we need to activate en passant flag or promotion flag
+            if (isAPawn != null)
+            {
+                //If this pawn was on the starting line and doubled moved, turn on a flag in neighbouring enemy pawns to allow for eating en passant
+                if (isAPawn.onStartingLine && allowedDestinations.Count > 1 && dropPos == allowedDestinations[1])
+                    isAPawn.EnPassantFlags(dropPos);
 
+                //If pawn is dropped at the final line
+                else if (dropPos.y == 0 || dropPos.y == 7) //Only white and black pawns can be at pos.y = 7 and pos.y = 0 respectively
+                    Debug.Log("Pawn promotion happens now");
+            }
+
+            board.UpdatePieceOnBoard(dropPos);
+        }
     }
 }
