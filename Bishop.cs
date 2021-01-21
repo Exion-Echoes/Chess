@@ -52,4 +52,10 @@ public class Bishop : Piece
             }
         }
     }
+
+    public override void CheckIfMovingPutOpposingKingOnCheck()
+    {
+        base.CheckIfMovingPutOpposingKingOnCheck();
+
+    }
 }

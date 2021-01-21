@@ -68,4 +68,9 @@ public class Queen : Piece
             }
         }
     }
+    public override void CheckIfMovingPutOpposingKingOnCheck()
+    {
+        base.CheckIfMovingPutOpposingKingOnCheck();
+
+    }
 }

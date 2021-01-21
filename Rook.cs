@@ -45,4 +45,15 @@ public class Rook : Piece
             }
         }
     }
+
+    public override void CheckIfMovingPutOpposingKingOnCheck()
+    {
+        DeterminePossibleActions();
+
+        for(int i = 0; i < allowedDestinations.Count; i++)
+        {
+            if (board.boardArray[allowedDestinations[i].x, allowedDestinations[i].y] == opposingKing)
+                opposingKing.isChecked = true;
+        }
+    }
 }

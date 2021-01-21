@@ -13,12 +13,6 @@ public class Pawn : Piece
     public override void Awake()
     {
         base.Awake();
-//        allowedDestinations = new Vector2Int[5]; //There are 5 things to consider with pawns
-    }
-
-    public void Start()
-    {
-        //sub to en passant events of enemy pawns
     }
 
     public override void DeterminePossibleActions()
@@ -134,6 +128,34 @@ public class Pawn : Piece
                 {
                     board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>().enPassantPawn = pawn;
                     board.pawnThatMayEatEnPassant = board.boardArray[(testBoardCoords + Vector2Int.left).x, (testBoardCoords + Vector2Int.left).y].GetComponent<Pawn>();
+                }
+            }
+        }
+    }
+
+    public override void CheckIfThisPieceChecksOpposingKing()
+    {
+        Vector2Int[] testBoardCoords = new Vector2Int[2];
+
+        if (isWhite)
+        {
+            testBoardCoords[0] = boardCoords + new Vector2Int(-1, 1);
+            testBoardCoords[1] = boardCoords + new Vector2Int(1, 1);
+        }
+        else
+        {
+            testBoardCoords[0] = boardCoords + new Vector2Int(-1, -1);
+            testBoardCoords[1] = boardCoords + new Vector2Int(1, -1);
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            if (testBoardCoords[i].x >= 0 && testBoardCoords[i].x <= 7 && testBoardCoords[i].y >= 0 && testBoardCoords[i].y <= 7) //Have to limit these to not get an out of reach exception 
+            {
+                if (board.boardArray[testBoardCoords[i].x, testBoardCoords[i].y] == opposingKing)
+                {
+                    opposingKing.isChecked = true;
+                    break;
                 }
             }
         }

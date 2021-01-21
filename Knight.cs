@@ -32,4 +32,10 @@ public class Knight : Piece //,including Functions? instead of having to write t
             }
         }
     }
+
+    public override void CheckIfMovingPutOpposingKingOnCheck()
+    {
+        base.CheckIfMovingPutOpposingKingOnCheck();
+
+    }
 }
