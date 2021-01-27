@@ -10,13 +10,14 @@ public class Piece : MonoBehaviour
     public Vector2Int boardCoords; //[0,0] = A1, [0,1] = A2, etc.
     public Vector2Int pastBoardCoords;
     public List<Vector2Int> allowedDestinations = new List<Vector2Int>();
+    public List<Vector2Int> positionsDefended = new List<Vector2Int>(); //Friendly pieces this piece is attacking
     public bool isOnBoard;
 
     public Board board;
     [HideInInspector]
     public King king;
     [HideInInspector]
-    public King opposingKing;
+    public King enemyKing;
 
     [HideInInspector]
     public Pawn isAPawn;
@@ -30,6 +31,11 @@ public class Piece : MonoBehaviour
     public Knight isAKnight;
     [HideInInspector]
     public King isAKing;
+
+    //TEST
+
+    //
+    //
 
     public virtual void Awake()
     {
@@ -45,18 +51,134 @@ public class Piece : MonoBehaviour
         isAQueen = GetComponent<Queen>();
     }
 
-    public void Start()
+    public virtual void Start()
     {
-        if (isWhite)
+        king = isWhite ? board.wPieces[0].isAKing : board.bPieces[0].isAKing;
+        enemyKing = isWhite ? board.bPieces[0].isAKing : board.wPieces[0].isAKing;
+    }
+
+    public virtual void InitialAllowedDestinations()
+    {
+        //
+    }
+
+    public bool IsThereAnEnemy(Vector2Int pos)
+    {
+        Piece piece = board.GetBoardPiece(pos);
+        if (piece != null && piece.isWhite != isWhite)
+            return true;
+        return false;
+    }
+
+    public bool IsThereAnAlly(Vector2Int pos)
+    {
+        Piece piece = board.GetBoardPiece(pos);
+        if (piece != null && piece.isWhite == isWhite)
+            return true;
+        return false;
+    }
+
+    public bool IsThisOOB(Vector2Int coords) //Are given coordinates out of bounds, i.e. not within {[0,7] , [0,7]}?
+    {
+        if (coords.x < 0 || coords.x > 7 || coords.y < 0 || coords.y > 7)
+            return true;
+        return false;
+    }
+
+    public bool IsOwnKingChecked(Vector2Int testPos) //Determines whether King is checked after testPos is emptied
+    {
+        Vector2Int kingPos = board.wPieces[0].boardCoords; //Check in this direction for potential checks from the enemy
+
+        int travelDistance = 0;
+        Vector2Int testDirection = Vector2Int.zero;
+
+        //Check if revealing the king would check it
+        bool EnemyInTheWay (bool checkQueen = false, bool checkBishop = false, bool checkRook = false)
         {
-            king = board.wKing;
-            opposingKing = board.bKing;
+            bool IsAQueen(bool checkThis, Piece piece)
+            {
+                if (checkThis && piece.isAQueen != null)
+                    return true;
+                return false;
+            }
+            bool IsARook(bool checkThis, Piece piece)
+            {
+                if (checkThis && piece.isARook != null)
+                    return true;
+                return false;
+            }
+            bool IsABishop(bool checkThis, Piece piece)
+            {
+                if (checkThis && piece.isABishop != null)
+                    return true;
+                return false;
+            }
+
+            for (int i = 1; i <= travelDistance; i++)
+            {
+                Vector2Int testBoardCoords = boardCoords + new Vector2Int(testDirection.x * i, testDirection.y * i);
+                Piece piece = board.GetBoardPiece(testBoardCoords);
+                if (IsThereAnEnemy(testBoardCoords) && (IsAQueen(checkQueen, piece) || IsARook(checkRook, piece) || IsABishop(checkBishop, piece)))
+                    return true;
+
+                else if (IsThereAnAlly(testBoardCoords)) //This lets the function exit the for loop earlier sometimes, but otherwise isn't necessary
+                    return false;
+            }
+            return false;
         }
-        else
+
+        if (Mathf.Abs(boardCoords.x - kingPos.x) == Mathf.Abs(boardCoords.y - kingPos.y) && boardCoords.x != kingPos.x && boardCoords.y != kingPos.y)
         {
-            king = board.bKing;
-            opposingKing = board.wKing;
+            travelDistance = Mathf.Abs(boardCoords.x - kingPos.x);
+            testDirection = new Vector2Int((int) Mathf.Sign(boardCoords.x - kingPos.x), (int) Mathf.Sign(boardCoords.y - kingPos.y));
+            return EnemyInTheWay(true) || EnemyInTheWay(false, true); //If a Queen or a Bishop attacks, return true
         }
+        else if (boardCoords.x == kingPos.x)
+        {
+            travelDistance = Mathf.Abs(boardCoords.y - kingPos.y);
+            testDirection = new Vector2Int(0, (int)Mathf.Sign(boardCoords.y - kingPos.y));
+            return EnemyInTheWay(true) || EnemyInTheWay(false, false, true); //If a Queen or a Rook attacks, return true
+            //Vertical/Horizontal check - rooks and queen
+        }
+        else if (boardCoords.y == kingPos.y)
+        {
+            travelDistance = Mathf.Abs(boardCoords.x - kingPos.x);
+            testDirection = new Vector2Int((int)Mathf.Sign(boardCoords.x - kingPos.x), 0);
+            return EnemyInTheWay(true) || EnemyInTheWay(false, false, true); //If a Queen or a Rook attacks, return true
+        }
+
+
+        //Check if moving to testPos stops a check
+        //
+        //
+        //
+
+        if (Mathf.Abs(boardCoords.x - kingPos.x) == Mathf.Abs(boardCoords.y - kingPos.y) && boardCoords.x != kingPos.x && boardCoords.y != kingPos.y)
+        {
+            //Diagonal check - bishops and queen
+            //IsThereAnAlly() and IsThereAnEnemy() at each spot
+        }
+        else if (boardCoords.x == kingPos.x || boardCoords.y == kingPos.y)
+        {
+            //Vertical/Horizontal check - rooks and queen
+        }
+
+        //Check if opening up pastPos would make the king checked, in which case return true
+
+        //Check if moving to pos would stop the king from being checked, in which case return false
+
+        //MAKE KING MOVEMENT DETERMINATIONS
+        //CONSIDER THE CHECK CASE DESCRIBED BELOW
+        //ADD ISOWNKINGCHECKED FUNCTION SO IT WORKS PROPERLY
+
+        //The case where the king is the piece that checks if it moves into a checked position is resolved in the King script
+        //...Every other piece's allowed destination is determined before the king's, so the allowed destinations may be referenced along with the king's test positions
+        return false;
+    }
+
+    public virtual void UpdateAllowedDestinations()
+    {
+        //Check for allied / enemy pieces and check if moving at the test position would put own king in check
     }
 
     public virtual void DeterminePossibleActions()
@@ -99,8 +221,90 @@ public class Piece : MonoBehaviour
         return null;
     }
 
-    public bool WillMovingPiecePutKingInCheck(Vector2Int oldBoardCoords, Vector2Int testBoardCoords)
+    public bool WillMovingPiecePutOwnKingInCheck(Vector2Int oldBoardCoords, Vector2Int testBoardCoords)
     {
+        //Define a new board array with the this piece at the test position - It might be simpler to buffer this later on, than to define a 8x8 array each call
+        //        Piece[,] testBoard = board.boardArray;
+
+        //        testBoard[testBoardCoords.x, testBoardCoords.y] = this;
+        //        testBoard[oldBoardCoords.x, oldBoardCoords.y] = null;
+
+        //        List<Piece> enemyPieces = new List<Piece>(); //Might want to define this when the game is first ran, and then update them whenever a piece gets eaten
+        /*
+                for (int i = 0; i < 8; i++)
+                {
+                    for (int j = 0; j < 8; j++)
+                    {
+        //                if (testBoard[i, j] != null && testBoard[i, j].isWhite != isWhite)
+        //                    enemyPieces.Add(testBoard[i, j]);
+                    }
+                }
+
+                for(int i = 0; i < enemyPieces.Count; i++)
+                {
+        //            enemyPieces[i].DeterminePossibleActions();
+        //This won't work, I still need to check possible actions after
+                    for(int j = 0; j < enemyPieces[i].allowedDestinations.Count; j++)
+                    {
+        //                if (enemyPieces[i].allowedDestinations[j] == king.boardCoords)
+        //                    return true; //Moving this piece will check own king
+                    }
+                }
+        */
+        //THESE ARE BIG OPERATIONS - CAN'T HAVE THIS IN FINAL VERSION - might just want to check pieces around king and long range pieces (bishop queen rook)
+
+        //HAVE TO RESOLVE STACK OVERFLOW ISSUE - BECAUSE THIS FUNCTION's CALLED IN DETERMINE POSSIBLE ACTIONS, IT KEEPS LOOPING
+        //HAVE TO FIND A WAY TO DETERMIUNE POSSIBLE ACTIONS BETTER
+
+
+        //MAYBE I CAN PUT WILL MOVING PIECE AT THE VERY END, TO ERASE ANY ALLOWED DESTINATIONS THAT SHOULDN'T EXIST
+
+        //*****THIS CAN BE SIMPLIFIED ACTUALLY - IT'S IMPOSSIBLE FOR A PAWN TO CHECK A CHECK AFTER ANOTHER PIECE MOVED, SAME FOR KNIGHTS
+        //I ONLY HAVE TO CHECK IF ENEMY ROOKS, QUEEN, AND BISHOP CHECK OWN KING WHEN TRYING TO MOVE A PIECE
+        //****CHECK IN 8 DIRECTIONS AROUND KING UNTIL A PIECE IS MET WITH CHECKFORFRIENDLY/ENEMY FUNCTIONS
+        //****!!!!!!!!!!!!
+
+//        Vector2Int kingPos = king.boardCoords;
+        //Look for pieces in the direction of the space that just opened up
+        //        float slope = (float)(kingPos.x - oldBoardCoords.x) / Mathf.Clamp((float)(kingPos.y - oldBoardCoords.y),1,8);
+        //        bool kingMayBeCheckedFromSpace = Mathf.Abs((int)slope) == 0 || Mathf.Abs(slope) == 1;
+        //If the value of the slope isn't 1 or 0, then
+
+//        bool kingMayBeCheckedFromSpace = false;
+
+        //Check horizontal
+        if(king.boardCoords.y == oldBoardCoords.y)
+        {
+            int direction = (int) Mathf.Sign(oldBoardCoords.x - king.boardCoords.x);
+            if(direction > 0) //Check right of king for friendly and enemy pieces
+            {
+                for(int i = king.boardCoords.x; i < 8; i++)
+                {
+                    Piece friend = CheckForAFriendlyPiece(new Vector2Int(i + 1, king.boardCoords.y));
+                    Piece enemy = CheckForAnEnemyPiece(new Vector2Int(i + 1, king.boardCoords.y));
+                    Debug.Log(i + ", " + friend + ", " + enemy);
+                    if (friend != null && friend != this)
+                        break; //There can be no checks from this direction, so move on to the other directions
+                    else if (enemy != null && (enemy.isARook != null || enemy.isAQueen != null))
+                        return true; //This movement cannot be allowed as it would put own king in check
+                }
+            }
+        }
+        else if (king.boardCoords.x == oldBoardCoords.y)
+        {
+            //
+        }
+        else
+        {
+            //Verify that it's a proper diagonal (45 degree angle vector from king to empty space)
+        }
+
+        //If moving the piece stops check on own king, then this returns false (this is also the only allowed movement during a check - if no such movements exist, then it's checkmate)
+
+        //need to allow king to move out of check as well, this is currently forbidden by the code
+
+        //If 
+
         //THIS IS SPECIFICALLY FOR THIS PIECE'S KING
 
         //Look for checks on the king of the same color as this piece
@@ -116,47 +320,30 @@ public class Piece : MonoBehaviour
         //if(king not checked, but checked after piece, return true)
         //if(king checked, and still checked after piece, return true)
 
-//        if(kingOfThisPiece.isChecked)
+        //        if(kingOfThisPiece.isChecked)
 
         return false;
     }
 
-    public virtual void CheckIfMovingPutOpposingKingOnCheck()
+    public void DidMovingPutOpposingKingInCheck()
     {
-        //refer to piece's boardcoords and possible actions to see if a check is happening
-
-        //Need logic that makes a line with disappeared piece to see if any piece is placing king in check (e.g. a rook behind a bishop attacking the king)
-        //..
-        //..
-        //..
-        //I think I need a function to check if one piece puts check, and to refer to it when scanning through the opened line
-        //e.g. a pawn will check its forward diagonals after movement to see if it puts the king in check
-        //e.g. if a bishop moves and reveals a rook in line with the king, i need to call rook.IsCheckingOpposingKing
-
-        CheckIfThisPieceChecksOpposingKing();
-
-        //make a line from king to pastBoardCoords and call that piece's CheckKing()
-
-        //from king's boardcoords to this.pastboardboords, fine
-
-        //Need a bit more info than what I'm using now
-        //For instance, I need a check to see if king is not in check anymore
-        //Maybe King should hold a list of pieces that are checking it, and everytime movement occurs during a check, the list is checked to see if king'S still in check
-        //If more than 1 piece are attacking the king at once, then the king is the only piece that can move
-
-        //TRANSFER THIS TO LAPTOP SO I CAN WORK ON IT AT BUCK
-    }
-
-    public virtual void CheckIfThisPieceChecksOpposingKing()
-    {
-        //Each override will determine whether the opposing king's in attacking range of this piece
+        DeterminePossibleActions();
+        for(int i = 0; i < allowedDestinations.Count; i++)
+        {
+            //If enemy king is an allowed destination after movement, that's a check
+            if(allowedDestinations[i] == enemyKing.boardCoords)
+            {
+                enemyKing.isChecked = true;
+                break;
+            }
+        }
     }
     #endregion
 
     public virtual void DropOnBoard(Vector2Int dropPos)
     {
         bool canPieceMoveAtBoardCoords = CanPieceMoveAtBoardCoords(dropPos);
-        Piece pieceAtPos = board.boardArray[dropPos.x, dropPos.y];
+        Piece pieceAtPos = board.PieceOnBoard(dropPos);
         bool enPassantAllowed = isAPawn != null && isAPawn.enPassantPawn != null;
 
         //Check if piece can't be dropped at the given position: (1) where it can't move, (2) outside the board, (3) and where it started
@@ -168,7 +355,7 @@ public class Piece : MonoBehaviour
         {
             if (pieceAtPos != null)
                 board.EatPiece(pieceAtPos);
-            else if (enPassantAllowed)
+            else if (enPassantAllowed && dropPos == allowedDestinations[allowedDestinations.Count - 1]) //2nd && prevents enPassant eating while not moving diagonally
                 board.EatPiece(isAPawn.enPassantPawn);
 
             board.UpdatePieceOnBoard(dropPos);
@@ -190,7 +377,7 @@ public class Piece : MonoBehaviour
 
                 //If pawn is dropped at the final line
                 else if (dropPos.y == 0 || dropPos.y == 7) //Only white and black pawns can be at pos.y = 7 and pos.y = 0 respectively
-                    Debug.Log("Pawn promotion happens now");
+                    isAPawn.BeginPawnPromotion();
             }
 
             board.UpdatePieceOnBoard(dropPos);

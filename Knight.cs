@@ -4,6 +4,28 @@ using UnityEngine;
 
 public class Knight : Piece //,including Functions? instead of having to write them all the time
 {
+    public override void UpdateAllowedDestinations()
+    {
+        void DestinationFunction(Vector2Int testPos)
+        {
+            allowedDestinations.Clear();
+            positionsDefended.Clear();
+
+
+        }
+
+        //
+    }
+
+    public override void InitialAllowedDestinations()
+    {
+        allowedDestinations.Add(boardCoords + (isWhite ? Vector2Int.up + Vector2Int.up + Vector2Int.right : Vector2Int.down + Vector2Int.down + Vector2Int.right));
+        allowedDestinations.Add(boardCoords + (isWhite ? Vector2Int.up + Vector2Int.up - Vector2Int.right : Vector2Int.down + Vector2Int.down - Vector2Int.right));
+    }
+
+
+
+
     public override void DeterminePossibleActions()
     {
         allowedDestinations.Clear();
@@ -19,11 +41,12 @@ public class Knight : Piece //,including Functions? instead of having to write t
         DetermineAllowedDestinations(boardCoords + new Vector2Int(-1, 2));
         #endregion
     }
+
     void DetermineAllowedDestinations(Vector2Int testBoardCoords)
     {
         if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception 
         {
-            if (!WillMovingPiecePutKingInCheck(boardCoords, testBoardCoords))
+            if (!WillMovingPiecePutOwnKingInCheck(boardCoords, testBoardCoords))
             {
                 if (CheckForAnEnemyPiece(testBoardCoords) != null)
                     allowedDestinations.Add(testBoardCoords);
@@ -31,11 +54,5 @@ public class Knight : Piece //,including Functions? instead of having to write t
                     allowedDestinations.Add(testBoardCoords);
             }
         }
-    }
-
-    public override void CheckIfMovingPutOpposingKingOnCheck()
-    {
-        base.CheckIfMovingPutOpposingKingOnCheck();
-
     }
 }
