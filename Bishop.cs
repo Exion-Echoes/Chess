@@ -4,32 +4,144 @@ using UnityEngine;
 
 public class Bishop : Piece
 {
+    public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
+    {
+        if (IsAnAlly(endTile)) //Cannot end at an allied tile
+            return false;
+
+        //Possible moves are such that m x and y movements gives 1 when one component is 0 (hori/vert) and 2 when both components are equal (diagonal)
+        //**Replace with something else since bishops have line movement that's blocked at the first non empty tile
+        bool moveAllowed = InTheList(PossibleMoves(), endTile);
+//        Debug.Log(moveAllowed + ", " + endTile.pos);
+
+        if (moveAllowed)
+        {
+            if (!MovingChecksOwnKing(startTile, endTile))
+                return true;
+            return true;
+        }
+
+        //
+        return false;
+    }
+
+    //GET BISHOP WORKING, THEN GET BOARD STATE WORKING, AND GET MOVINGHCECKSOWNKING WORKING (WANT BISHOP TO MOVE ALONG THE DIAGONAL IT'S DEFENDING)
+
+
+    public override List<Tile> PossibleMoves() //Any allowed movement must be part of this list
+    {
+        List<Tile> moves = new List<Tile>();
+
+        int y = pos.y;
+        for (int x = pos.x - 1; x >= 0; x--) //Upper left diagonal
+        {
+            if (y <= 7)
+            {
+                y++;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, y))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, y)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, y))))
+                    break;
+            }
+        }
+        y = pos.y;
+        for (int x = pos.x - 1; x >= 0; x--) //Down left diagonal
+        {
+            if (y >= 0)
+            {
+                y--;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, y))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, y)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, y))))
+                    break;
+            }
+        }
+        y = pos.y;
+        for (int x = pos.x + 1; x <= 7; x++) //Upper right diagonal
+        {
+            if (y <= 7)
+            {
+                y++;
+//                Debug.Log(x + ", " + y + ", " + board.TileAt(new Vector2Int(x, y)).piece);
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, y))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, y)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, y))))
+                    break;
+            }
+        }
+        y = pos.y;
+        for (int x = pos.x + 1; x <= 7; x++) //Down right diagonal
+        {
+            if (y >= 0)
+            {
+                y--;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, y))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, y)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, y))))
+                    break;
+            }
+        }
+
+        return moves;
+    }
+
+
+    /*
     public override void UpdateAllowedDestinations()
     {
         allowedDestinations.Clear();
         positionsDefended.Clear();
+        linesOfAttack.Clear();
 
         void DestinationFunction(Vector2Int testDirection, int travelDistance)
         {
+            beginLinesOfAttack = false;
             for (int i = 1; i <= travelDistance; i++)
             {
                 Vector2Int testBoardCoords = boardCoords + new Vector2Int(testDirection.x * i, testDirection.y * i);
                 if (!IsThisOOB(testBoardCoords) && !IsOwnKingChecked(testBoardCoords))
                 {
-                    if (IsThereAnEnemy(testBoardCoords))
+                    if (!beginLinesOfAttack)
                     {
-                        allowedDestinations.Add(testBoardCoords);
-                        break; //Can eat this piece, but can't move farther
-                    }
+                        if (IsThereAnEnemy(testBoardCoords))
+                        {
+                            allowedDestinations.Add(testBoardCoords);
+                            break;
+//                            beginLinesOfAttack = true; //Can eat this piece, but can't move farther
+                        }
 
-                    else if (IsThereAnAlly(testBoardCoords))
+                        else if (IsThereAnAlly(testBoardCoords))
+                        {
+                            positionsDefended.Add(testBoardCoords);
+                            break;
+//                            beginLinesOfAttack = true; //Has to stop before this piece, so no further allowed destination is added
+                        }
+
+                        else if (!IsThereAnEnemy(testBoardCoords) && !IsThereAnAlly(testBoardCoords))
+                            allowedDestinations.Add(testBoardCoords);
+                    }
+                    else //Carry on destination calculations until we hit another piece
                     {
-                        positionsDefended.Add(testBoardCoords);
-                        break; //Has to stop before this piece, so no further allowed destination is added
-                    }
+                        if (!IsThereAnAlly(testBoardCoords) && !IsThereAnEnemy(testBoardCoords))
+                            linesOfAttack.Add(testBoardCoords);
 
-                    else if (!IsThereAnEnemy(testBoardCoords) && !IsThereAnAlly(testBoardCoords))
-                        allowedDestinations.Add(testBoardCoords);
+                        else if (IsThereAnEnemy(testBoardCoords))
+                        {
+                            linesOfAttack.Add(testBoardCoords);
+                            break;
+                        }
+
+                        else if (IsThereAnAlly(testBoardCoords))
+                            break;
+                    }
                 }
             }
         }
@@ -49,52 +161,5 @@ public class Bishop : Piece
         DestinationFunction(new Vector2Int(-1, -1), travelDistanceDownLeft);
     }
 
-    public override void DeterminePossibleActions()
-    {
-        allowedDestinations.Clear();
-
-        //Check along the 4 paths around the bishop and stop when it reaches the end of the board or a piece (before friendly and on top of enemy)
-        int travelDistanceUp = 7 - boardCoords.y;
-        int travelDistanceDown = boardCoords.y;
-        int travelDistanceRight = 7 - boardCoords.x;
-        int travelDistanceLeft = boardCoords.x;
-
-        //Diagonal additions to Rook's logic
-        //Since it's a square grid, the diagonal squares to consider can be determined by looking at the same coordinates as before
-        int travelDistanceUpRight = Mathf.Max(travelDistanceUp, travelDistanceRight);
-        int travelDistanceUpLeft = Mathf.Max(travelDistanceUp, travelDistanceLeft);
-        int travelDistanceDownRight = Mathf.Max(travelDistanceDown, travelDistanceRight);
-        int travelDistanceDownLeft = Mathf.Max(travelDistanceDown, travelDistanceLeft);
-
-        #region DIAGONAL
-        DetermineAllowedDestinations(new Vector2Int(1, 1), travelDistanceUpRight);
-        DetermineAllowedDestinations(new Vector2Int(-1, 1), travelDistanceUpLeft);
-        DetermineAllowedDestinations(new Vector2Int(1, -1), travelDistanceDownRight);
-        DetermineAllowedDestinations(new Vector2Int(-1, -1), travelDistanceDownLeft);
-        #endregion
-    }
-    void DetermineAllowedDestinations(Vector2Int testDirection, int travelDistance)
-    {
-        for (int i = 1; i <= travelDistance; i++)
-        {
-            Vector2Int testBoardCoords = boardCoords + new Vector2Int(testDirection.x * i, testDirection.y * i);
-            if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception 
-            {
-                if (!WillMovingPiecePutOwnKingInCheck(boardCoords, testBoardCoords))
-                {
-                    if (CheckForAnEnemyPiece(testBoardCoords) != null)
-                    {
-                        allowedDestinations.Add(testBoardCoords);
-                        break; //Queen can eat this piece, but can't move farther
-                    }
-
-                    else if (CheckForAFriendlyPiece(testBoardCoords) != null)
-                        break; //Queen has to stop before this piece, so no other allowed destination is added
-
-                    else if (CheckForAnEnemyPiece(testBoardCoords) == null && CheckForAFriendlyPiece(testBoardCoords) == null)
-                        allowedDestinations.Add(testBoardCoords);
-                }
-            }
-        }
-    }
+    */
 }

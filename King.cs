@@ -4,6 +4,61 @@ using UnityEngine;
 
 public class King : Piece
 {
+    public bool moved;
+    public bool isChecked; //Limits movements this turn
+
+    public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
+    {
+        if (IsAnAlly(endTile)) //Cannot end at an allied tile
+            return false;
+
+        //Possible moves are such that adding x and y movements gives 1 when one component is 0 (hori/vert) and 2 when both components are equal (diagonal)
+        Vector2Int move = new Vector2Int(Mathf.Abs(startTile.pos.x - endTile.pos.x), Mathf.Abs(startTile.pos.y - endTile.pos.y));
+        bool moveAllowed = move.x + move.y == 1 || move.x * move.y == 1;// ((posMove.x == 0 || posMove.y == 0) && (posMove.x + posMove.y == 1)) || ((posMove.x == posMove.y) && (posMove.x + posMove.y == 2));
+        if(moveAllowed)
+        {
+            if (KingAttackedAt(endTile))
+                return false;
+            return true;
+        }
+
+        return PerformCastling(endTile);
+    }
+
+    bool KingAttackedAt(Tile tile)
+    {
+        //If tile already contains a piece, imagine it was this king instead
+        //Update board state to see if any enemy attacks at the tile's location
+        //If an attack exists, return true, which forbids the king moving there
+        //Attacks consist of every PossibleMove() of opponent pieces, minus pawns, from whom we only need diagonal moves
+        //Otherwise return false
+
+        return false;
+    }
+
+    bool PerformCastling(Tile tile)
+    {
+        //tile will be one left of right rook or two right of left rook
+        //Ensure there are empty tiles on the way there
+        //Ensure there are no enemies attacking the empty tiles
+        //Ensure king and chosen rook haven't moved all game
+        int distToRookTile = tile.pos.x + 1 - pos.x; //Castling would be triggered by moving king two tiles right or two tiles left
+//        if (!moved && (tile.pos.x + 1 - pos.x == 3 || distToRookTile == 4) && tile.piece)
+
+            return false;
+    }
+
+    public override List<Tile> PossibleMoves()
+    {
+        return null;
+        return new List<Tile> {
+            board.TileAt(pos + new Vector2Int(1, 1)), board.TileAt(pos + new Vector2Int(1, 0)), board.TileAt(pos + new Vector2Int(1, -1)), board.TileAt(pos + new Vector2Int(0, -1)),
+            board.TileAt(pos + new Vector2Int(-1, -1)), board.TileAt(pos + new Vector2Int(-1, 0)), board.TileAt(pos + new Vector2Int(-1, 1)), board.TileAt(pos + new Vector2Int(0, 1)) };
+    }
+
+
+
+    /*
     public bool isChecked;
     public Rook[] rooks = new Rook[2]; //Used for determining if castling is possible
 
@@ -109,63 +164,5 @@ public class King : Piece
         DestinationFunction(new Vector2Int(-1, -1), 1);
     }
 
-    public override void DeterminePossibleActions()
-    {
-        allowedDestinations.Clear();
-
-        //Check along the 8 paths around the king and stop when it reaches the end of the board or a piece (before friendly and on top of enemy)
-
-        #region HORIZONTAL AND VERTICAL
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(0, 1));
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(0, -1));
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(1, 0));
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(-1, 0));
-        #endregion
-
-        #region DIAGONALS
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(1, 1));
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(-1, 1));
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(1, -1));
-        DetermineAllowedDestinations(boardCoords + new Vector2Int(-1, -1));
-        #endregion
-    }
-
-    void DetermineAllowedDestinations(Vector2Int testBoardCoords)
-    {
-        if (testBoardCoords.x >= 0 && testBoardCoords.x <= 7 && testBoardCoords.y >= 0 && testBoardCoords.y <= 7) //Have to limit these to not get an out of reach exception 
-        {
-            if (!WillMovingPiecePutOwnKingInCheck(boardCoords, testBoardCoords))
-            {
-                if (CheckForAnEnemyPiece(testBoardCoords) != null)
-                    allowedDestinations.Add(testBoardCoords);
-                else if (CheckForAnEnemyPiece(testBoardCoords) == null && CheckForAFriendlyPiece(testBoardCoords) == null)
-                    allowedDestinations.Add(testBoardCoords);
-            }
-        }
-    }
-
-    public bool KingIsCheckedIfPieceMovesAt(Piece piece, Vector2Int pos)
-    {
-        Vector2Int pastPos = piece.boardCoords;
-
-        if (boardCoords.x - pastPos.x == boardCoords.y - pastPos.y && boardCoords.x != pastPos.x && boardCoords.y != pastPos.y)
-        {
-            //Diagonal check - bishops and queen
-            //IsThereAnAlly() and IsThereAnEnemy() at each spot
-        }
-        else if (boardCoords.x == pastPos.x || boardCoords.y == pastPos.y)
-        {
-            //Vertical/Horizontal check - rooks and queen
-        }
-
-        //Check if opening up pastPos would make the king checked, in which case return true
-
-        //Check if moving to pos would stop the king from being checked, in which case return false
-
-        //Look at piece
-        return false;
-    }
-
-    //If isChecked, and another move happens, isChecked must be turned back to false automatically. If no moves are possible when isChecked, then gameState = Checkmate
-
+    */
 }
