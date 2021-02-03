@@ -1,29 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-////Features to implement:
-/// Sprites for pieces and board
-/// Mouse script: 
-///     Mouse location is refreshed whenever it moves
-///     Call board script highlight function when Mouse hovers over a new square
-///     Can pick up moveable pieces
-/// Piece script:
-///     Rule function that gives a list of tiles that have to be tested when trying to move
-///     Keep track of squares that the piece went over when moving
-/// Board script:
-///     Function to highlight/unhighlight squares of the board
-///     Function to remove piece from the board (and set it aside)
-///     (DONE) Function to generate pieces and to load them and place them on board
-///     
-
-//Restarting project: 
-/*  Program using an event based system
- *      Board controls and pawn promotion controls should be a function called in and out (like delegate += pawn promotion, then -= after a choice is made)
- *  Allowed movements should be calculated only once, and updated whenever a new piece has moved
- *      Must be able to determine where one piece could move if another piece moved (so that I can detect cases where moving would put own king in check, or cases when moving king would put it out of check)
- * 
- * 
- */
 
 /*Restarting project a second time (l0l):
  * state := playGame;
@@ -46,7 +23,6 @@ print "thank you for playing the game";
  * 
  */
 
-
 public class Board : MonoBehaviour
 {
     delegate void GameStateDelegate();
@@ -54,25 +30,15 @@ public class Board : MonoBehaviour
 
     public Tile[] state = new Tile[64];
     public Piece grabbedPiece; //Piece being operated on
-    public Tile startTile, endTile, wKTile, bKTile; //King tiles need to be updated (Pieces wouldn't have to, but I would still need to keep track of their pos)
+    public List<Piece> eatenPieces = new List<Piece>();
+    public Tile startTile, wKTile, bKTile; //King tiles need to be updated (Pieces wouldn't have to, but I would still need to keep track of their pos)
+    public Tile enPassantTile; //Needs to be reset as soon as a move is made after this has been turned on
 
     public void Awake()
     {
         state = InitialBoardState();
 
-//        for (int i = 0; i < 64; i++)
-//            Debug.Log(i + ", " + state[i].id + ", " + state[i].piece);
-
         gameState = PickAPiece;
-
-        for(int i = 0; i < state.Length; i++)
-        {
-            if (state[i] != null && state[i].piece != null && state[i].piece.GetComponent<Bishop>() != null)
-            {
-//                for(int j = 0; j < state[i].piece.PossibleMoves().Count; j++)
-//                    Debug.Log(state[i].piece.pos + ", " + state[i].piece.PossibleMoves()[j]);
-            }
-        }
     }
 
     public void Update()
@@ -84,7 +50,6 @@ public class Board : MonoBehaviour
     {
         Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-
         if (Input.GetMouseButtonDown(0)) //Left click
         {
             Tile tile = TileAt(BoardUnits(mousePos));
@@ -94,16 +59,7 @@ public class Board : MonoBehaviour
                 grabbedPiece = tile.piece;
                 gameState = DropAPiece;
             }
-
-
         }
-
-
-        //        Debug.Log(BoardUnits(mousePos) + ", " + UnityUnits(BoardUnits(mousePos)) + ", " + mousePos);
-        //  if(TileAt(BoardUnits(mousePos)) != null)
-        //        Debug.Log(mousePos + ", " + BoardUnits(mousePos) + ", " + UnityUnits(BoardUnits(mousePos)) + ", " + TileAt(BoardUnits(mousePos)).pos);
-        //      else
-        //            Debug.Log(mousePos + ", " + BoardUnits(mousePos) + ", " + UnityUnits(BoardUnits(mousePos)));
     }
 
     public void DropAPiece()
@@ -114,7 +70,7 @@ public class Board : MonoBehaviour
         if (Input.GetMouseButtonUp(0)) //Let go of left click
         {
             Tile endTile = TileAt(BoardUnits(grabbedPiece.transform.position));
-//            Debug.Log(startTile.piece + ", " + startTile.id + ", " + endTile.piece);
+            //            Debug.Log(startTile.piece + ", " + startTile.id + ", " + endTile.piece);
             if (endTile != null && grabbedPiece.CanMove(startTile, endTile))
             {
                 Debug.Log("Could place here");
@@ -126,21 +82,38 @@ public class Board : MonoBehaviour
                 //***
                 //***
 
+                if (endTile.piece != null) //Check for regular eat
+                    DistributeEatenPieces(ref endTile);
+
+                //
+                //
+                //WORK ENPASSANT - CURRENTLY I HAVE THE PAWN VARIABLE IN THIS SCRIPT, AND I WANT TO TURN IT ON IN THE CANMOVE SCRIPT
+                //if picked up piece isn'T enpassantpawn, then nullify the reference to that variable
+                //pawn :19:20 I am ascribing enpassant to the pawn that double moves
+                //am not sure yet how to best do this, I would like if the logic was contained and not scattered
+                //The enpassant pawn
+                //enPassantTile is active here, if it's not used, turn it off here, if it's used, turn it off ofc
+                //
+                //
+                HandleEnPassantLogic(startTile, endTile);
+
+
+
                 grabbedPiece.transform.position = UnityUnits(endTile.pos); //Place grabbed piece into end tile
                 endTile.piece = grabbedPiece;
                 endTile.piece.pos = endTile.pos;
                 startTile.piece = null;
 
-                if (startTile == wKTile) //Check if king tile needs to be updated
-                    wKTile = endTile;
-                else if (startTile == bKTile)
-                    bKTile = endTile;
+                VerifyIfKingTileNeedsToBeUpdated(endTile); //If grabbedPiece is a king
+
                 if (grabbedPiece.isAPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Check pawn reached promotion line
                     gameState = PromotePawn;
 
                 //***
                 //***
                 //Need to look for a check against the king, a checkmate, and a stalemate
+                //Checkmate = king is checked and there are no available moves (possible moves)
+                //Stalemate = king is not checked and there are no available moves (moving anywhere would check the king)
                 //***
                 //***
 
@@ -163,7 +136,7 @@ public class Board : MonoBehaviour
 
     public Tile TileAt(Vector2Int pos) //Look at current board and return tile
     {
-        if(pos.x + 8 * pos.y < 64 && pos.x + 8 * pos.y >= 0)
+        if (pos.x + 8 * pos.y < 64 && pos.x + 8 * pos.y >= 0)
             return state[pos.x + 8 * pos.y];
         return null;
     }
@@ -175,8 +148,8 @@ public class Board : MonoBehaviour
 
     Vector2Int BoardUnits(Vector3 pos)
     {
-        if(pos.x >= -120 && pos.x <= 120 && pos.y >= -120 && pos.y <= 120)
-            return new Vector2Int((int)(120 + pos.x) / 30, (int) (120 + pos.y) / 30);
+        if (pos.x >= -120 && pos.x <= 120 && pos.y >= -120 && pos.y <= 120)
+            return new Vector2Int((int)(120 + pos.x) / 30, (int)(120 + pos.y) / 30);
         return new Vector2Int(-1, -1);
     }
 
@@ -237,5 +210,55 @@ public class Board : MonoBehaviour
         for (int i = 0; i < 64; i++) //Can be determined as a function of the tile position (to be changed later)
             boardState[i].id = i;
         return boardState;
+    }
+
+    public void DistributeEatenPieces(ref Tile tile)
+    {
+        Piece eatenPiece = new GameObject().AddComponent<Piece>();
+        eatenPiece.gameObject.AddComponent<SpriteRenderer>().sprite = tile.piece.sr.sprite;
+        eatenPiece.isWhite = tile.piece.isWhite;
+        eatenPieces.Add(eatenPiece);
+        Destroy(tile.piece.gameObject);
+        tile.piece = null;
+
+        int wCount = 0;
+        int bCount = 0;
+        for (int i = 0; i < eatenPieces.Count; i++)
+        {
+            if (eatenPieces[i].isWhite)
+                wCount++;
+            else
+                bCount++;
+        }
+
+        eatenPiece.transform.position = new Vector3((eatenPiece.isWhite ? 150 : 180), 120 - (eatenPiece.isWhite ? wCount : bCount) * 15, -1);
+    }
+
+    void VerifyIfKingTileNeedsToBeUpdated(Tile endTile)
+    {
+        if (startTile == wKTile) //Check if king tile needs to be updated
+            wKTile = endTile;
+        else if (startTile == bKTile)
+            bKTile = endTile;
+    }
+
+    void HandleEnPassantLogic(Tile s, Tile e)
+    {
+        if (s.piece.isAPawn != null)
+        {
+            //If moved pawn moved diagonally above the enPassantTile, then the piece at enPassantTile is eaten
+            if (s.piece.pos == enPassantTile.pos - Vector2Int.right || s.piece.pos == enPassantTile.pos + Vector2Int.right)
+            {
+                if (e.pos == enPassantTile.pos + Vector2Int.up)
+                    DistributeEatenPieces(ref enPassantTile);
+            }
+
+            //If this piece just became the en passant Pawn, I have to make sure it isn't reset straight away
+            if (s.piece.isAPawn.becameAnEnPassantPawn)
+                s.piece.isAPawn.becameAnEnPassantPawn = false;
+            else
+                enPassantTile = null;
+        }
+        //I don't think this is gonna work because when the opponent will play, the flag will be turned off already, and the enpassanttile will be deleted
     }
 }

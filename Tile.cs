@@ -14,18 +14,12 @@ public class Tile
         {
             this.piece = piece;
             this.pos = this.piece.pos = pos;
-            this.piece.gameObject.AddComponent<SpriteRenderer>().sprite = sprite;
+            this.piece.sr = this.piece.gameObject.AddComponent<SpriteRenderer>();
+            this.piece.sr.sprite = sprite;
             this.piece.transform.position = unityPos;
             this.piece.isWhite = isWhite;
         }
         else
             this.pos = pos;
     }
-
-    public void CopyTile(Tile tileBeingCopied)
-    {
-        this.pos = tileBeingCopied.pos;
-        this.id = tileBeingCopied.id;
-        this.piece = tileBeingCopied.piece;
-    } //Might not need this
 }
