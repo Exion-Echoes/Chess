@@ -8,7 +8,7 @@ public class Piece : MonoBehaviour
     public bool isWhite;
     public Vector2Int pos;
     public List<Vector2Int> attacks = new List<Vector2Int>();
-    Pawn isAPawn;
+    public Pawn isAPawn;
 
     public SpriteRenderer sr;
     public Board board;
@@ -25,6 +25,15 @@ public class Piece : MonoBehaviour
 
     public virtual bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
     {
+        if (IsAnAlly(endTile)) //Cannot end at an allied tile
+            return false;
+
+        bool moveAllowed = InTheList(PossibleMoves(), endTile);
+        if (moveAllowed)
+        {
+            if (!MovingChecksOwnKing(startTile, endTile))
+                return true;
+        }
         return false;
         //Need to check opposing king after moving, if such a thing occured
         //stateTest is for cases where PossibleMoves() is sifted through completely, as opposed to a single move
@@ -47,54 +56,22 @@ public class Piece : MonoBehaviour
 
     public bool MovingChecksOwnKing(Tile startTile, Tile endTile)
     {
-        //Determine board state after startTile is moved to endTile and return true if King's checked, otherwise false
-
-        //  In the MoveChecksKing part
-        //      Create the temporary board state (starttile empty and endtile replaced by piece)
-        //      Assemble all PossibleMove() of other pieces (ignore pawns as they can't be made to check the King by a reveal)
-        //      If any coincide with king's position, return false on the piece.CanMove
-
-        //        Tile tempStartTile = startTile; //Store the tiles
-        //        Tile tempEndTile = endTile;
-
         Piece tempStartPiece = startTile.piece; //Store pieces
         Piece tempEndPiece = endTile.piece;
         List<Tile> enemyPossibleMoves = new List<Tile>();
 
         void ReturnBoardToNormal() //Return stored tiles to original positions
         {
-            board.state[endTile.id].piece = tempEndPiece;
-            board.state[startTile.id].piece = tempStartPiece;
-            tempStartPiece.pos = startTile.pos;
+            endTile.piece = tempEndPiece;
+            startTile.piece = tempStartPiece;
+            startTile.piece.pos = startTile.pos;
         }
 
-        //        board.state[startTile.id] = null; //Create temporary state
-        //        Debug.Log(startTile.pos + ", " + board.state[startTile.id].piece + ", " + startTile.piece + ", " + endTile.piece);
         //Create temporary state by replacing end tile's piece with the one originating from start tile
         endTile.piece = startTile.piece;
         endTile.piece.pos = endTile.pos;
-        //        Debug.Log(startTile.piece + ", " + endTile.piece);
         startTile.piece = null;
-        //        Debug.Log(startTile.piece + ", " + endTile.piece);
 
-        //IT LOOKS LIKE BISHOP REACT TO EACH OTHER WELL WITH HOW THINGS ARE CURRENTLY GOING - WILL HAVE TO PROCEED FROM HERE TOMORROW
-
-
-
-
-        //        Debug.Log(endTile.id + ", " + board.state[endTile.id].piece + ", " + board.state[startTile.id].piece);
-        //        board.state[startTile.id].piece = board.state[endTile.id].piece = null; //Create temporary state
-
-        //        board.state[startTile.id] = new Tile(tempStartTile.pos, null, null, Vector3.zero, tempStartTile.piece.isWhite);
-        //        board.state[startTile.id].pos = null;
-
-        //        board.state[endTile.id].piece = tempStartPiece;
-        //        tempStartPiece.pos = endTile.pos;
-
-        //        Debug.Log("state start tile: " + board.state[startTile.id].piece + ", temp start piece: " + tempStartPiece + ", end tile piece: " + endTile.piece + ", temp end piece: " + tempEndPiece);
-
-        //        ReturnBoardToNormal();
-        //        Debug.Log("after " + board.state[startTile.id].piece + ", " + tempStartPiece + ", " + endTile.piece + ", " + tempEndPiece);
 
         for (int i = 0; i < 64; i++)
         {
@@ -102,17 +79,13 @@ public class Piece : MonoBehaviour
             {
                 List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
                 if (!board.state[i].piece.isAPawn && possibleMoves != null) //Enemy pawns can't check a king by reveal
-                {
                     enemyPossibleMoves.AddRange(possibleMoves);
-  //                  for(int j=0;j<enemyPossibleMoves.Count; j++)
-//                    Debug.Log(j + ", " + possibleMoves[j].pos + ", " + board.state[i].piece);
-                }
             }
         }
 
         for(int i = 0; i < enemyPossibleMoves.Count; i++) //Compare possible enemy moves with king's position
         {
-//            Debug.Log(i + ", " + enemyPossibleMoves[i].pos + ", " + board.TileAt(enemyPossibleMoves[i].pos).piece);
+//            Debug.Log(i + ", " + enemyPossibleMoves[i].pos + ", " + board.TileAt(enemyPossibleMoves[i].pos).piece + ", " + (isWhite ? board.wKTile : board.bKTile).pos);
             if (enemyPossibleMoves[i] == (isWhite ? board.wKTile : board.bKTile))
             {
                 ReturnBoardToNormal();

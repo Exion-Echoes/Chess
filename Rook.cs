@@ -4,15 +4,49 @@ using UnityEngine;
 
 public class Rook : Piece
 {
-    public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
+    public override List<Tile> PossibleMoves() //Any allowed movement must be part of this list
     {
-        if (IsAnAlly(endTile)) //Cannot end at an allied tile
-            return false;
+        List<Tile> moves = new List<Tile>();
 
-        //
-        return false;
+        for (int x = pos.x - 1; x >= 0; x--) //Left
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(x, pos.y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+        }
+        for (int y = pos.y - 1; y >= 0; y--) //Down
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(pos.x, y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+        }
+        for (int x = pos.x + 1; x <= 7; x++) //Right
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(x, pos.y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+        }
+        for (int y = pos.y + 1; y <= 7; y++) //Up
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(pos.x, y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+        }
+
+        return moves;
     }
-
 
 
 

@@ -4,30 +4,6 @@ using UnityEngine;
 
 public class Bishop : Piece
 {
-    public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
-    {
-        if (IsAnAlly(endTile)) //Cannot end at an allied tile
-            return false;
-
-        //Possible moves are such that m x and y movements gives 1 when one component is 0 (hori/vert) and 2 when both components are equal (diagonal)
-        //**Replace with something else since bishops have line movement that's blocked at the first non empty tile
-        bool moveAllowed = InTheList(PossibleMoves(), endTile);
-//        Debug.Log(moveAllowed + ", " + endTile.pos);
-
-        if (moveAllowed)
-        {
-            if (!MovingChecksOwnKing(startTile, endTile))
-                return true;
-            return true;
-        }
-
-        //
-        return false;
-    }
-
-    //GET BISHOP WORKING, THEN GET BOARD STATE WORKING, AND GET MOVINGHCECKSOWNKING WORKING (WANT BISHOP TO MOVE ALONG THE DIAGONAL IT'S DEFENDING)
-
-
     public override List<Tile> PossibleMoves() //Any allowed movement must be part of this list
     {
         List<Tile> moves = new List<Tile>();

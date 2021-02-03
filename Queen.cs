@@ -4,16 +4,106 @@ using UnityEngine;
 
 public class Queen : Piece
 {
-    public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
+    public override List<Tile> PossibleMoves() //Any allowed movement must be part of this list
     {
-        if (IsAnAlly(endTile)) //Cannot end at an allied tile
-            return false;
+        List<Tile> moves = new List<Tile>();
 
-        //
-        return false;
+        for (int x = pos.x - 1; x >= 0; x--) //Left
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(x, pos.y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+        }
+        for (int y = pos.y - 1; y >= 0; y--) //Down
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(pos.x, y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+        }
+        for (int x = pos.x + 1; x <= 7; x++) //Right
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(x, pos.y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(x, pos.y))))
+                break;
+        }
+        for (int y = pos.y + 1; y <= 7; y++) //Up
+        {
+            if (IsAnAlly(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+
+            moves.Add(board.TileAt(new Vector2Int(pos.x, y)));
+            if (IsAnEnemy(board.TileAt(new Vector2Int(pos.x, y))))
+                break;
+        }
+
+        int yVal = pos.y;
+        for (int x = pos.x - 1; x >= 0; x--) //Upper left diagonal
+        {
+            if (yVal <= 7)
+            {
+                yVal++;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, yVal)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+            }
+        }
+        yVal = pos.y;
+        for (int x = pos.x - 1; x >= 0; x--) //Down left diagonal
+        {
+            if (yVal >= 0)
+            {
+                yVal--;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, yVal)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+            }
+        }
+        yVal = pos.y;
+        for (int x = pos.x + 1; x <= 7; x++) //Upper right diagonal
+        {
+            if (yVal <= 7)
+            {
+                yVal++;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, yVal)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+            }
+        }
+        yVal = pos.y;
+        for (int x = pos.x + 1; x <= 7; x++) //Down right diagonal
+        {
+            if (yVal >= 0)
+            {
+                yVal--;
+                if (IsAnAlly(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+
+                moves.Add(board.TileAt(new Vector2Int(x, yVal)));
+                if (IsAnEnemy(board.TileAt(new Vector2Int(x, yVal))))
+                    break;
+            }
+        }
+
+        return moves;
     }
-
-
 
 
 

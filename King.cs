@@ -13,26 +13,65 @@ public class King : Piece
             return false;
 
         //Possible moves are such that adding x and y movements gives 1 when one component is 0 (hori/vert) and 2 when both components are equal (diagonal)
-        Vector2Int move = new Vector2Int(Mathf.Abs(startTile.pos.x - endTile.pos.x), Mathf.Abs(startTile.pos.y - endTile.pos.y));
-        bool moveAllowed = move.x + move.y == 1 || move.x * move.y == 1;// ((posMove.x == 0 || posMove.y == 0) && (posMove.x + posMove.y == 1)) || ((posMove.x == posMove.y) && (posMove.x + posMove.y == 2));
-        if(moveAllowed)
+  //      Vector2Int move = new Vector2Int(Mathf.Abs(startTile.pos.x - endTile.pos.x), Mathf.Abs(startTile.pos.y - endTile.pos.y));
+//        bool moveAllowed = move.x + move.y == 1 || move.x * move.y == 1;// ((posMove.x == 0 || posMove.y == 0) && (posMove.x + posMove.y == 1)) || ((posMove.x == posMove.y) && (posMove.x + posMove.y == 2));
+        bool moveAllowed = InTheList(PossibleMoves(), endTile);
+        if (moveAllowed)
         {
-            if (KingAttackedAt(endTile))
-                return false;
-            return true;
+            if (!KingAttacked(startTile, endTile))
+                return true;
         }
-
         return PerformCastling(endTile);
     }
 
-    bool KingAttackedAt(Tile tile)
+    bool KingAttacked(Tile startTile, Tile endTile)
     {
-        //If tile already contains a piece, imagine it was this king instead
-        //Update board state to see if any enemy attacks at the tile's location
-        //If an attack exists, return true, which forbids the king moving there
-        //Attacks consist of every PossibleMove() of opponent pieces, minus pawns, from whom we only need diagonal moves
-        //Otherwise return false
+        Piece tempStartPiece = startTile.piece; //Store pieces
+        Piece tempEndPiece = endTile.piece;
+        List<Tile> enemyPossibleMoves = new List<Tile>();
 
+        void ReturnBoardToNormal() //Return stored tiles to original positions
+        {
+            endTile.piece = tempEndPiece;
+            startTile.piece = tempStartPiece;
+            startTile.piece.pos = startTile.pos;
+        }
+
+        //Create temporary state by replacing end tile's piece with the one originating from start tile
+        endTile.piece = startTile.piece;
+        endTile.piece.pos = endTile.pos;
+        startTile.piece = null;
+
+
+        for (int i = 0; i < 64; i++)
+        {
+            if (board.state[i].piece != null && board.state[i].piece.isWhite != isWhite)
+            {
+                if (!board.state[i].piece.isAPawn) //Enemy pawns don't attack king according to their possible moves
+                {
+                    List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
+                    if(possibleMoves != null)
+                        enemyPossibleMoves.AddRange(possibleMoves);
+                }
+                else //King can't move where pawns may attack
+                {
+                    List<Tile> pawnAttacks = board.state[i].piece.isAPawn.Attacks();
+                    if (pawnAttacks != null)
+                        enemyPossibleMoves.AddRange(pawnAttacks);
+                }
+            }
+        }
+
+        for (int i = 0; i < enemyPossibleMoves.Count; i++) //Compare possible enemy moves with king's position
+        {
+            if (enemyPossibleMoves[i] == endTile) //If an enemy attacks endTile, movement is not allowed
+            {
+                ReturnBoardToNormal();
+                return true;
+            }
+        }
+
+        ReturnBoardToNormal(); //***NOTE: I think I have to reset the board before approving the movement (not 100% sure though, this might not be necessary, will have to test)
         return false;
     }
 
@@ -50,12 +89,21 @@ public class King : Piece
 
     public override List<Tile> PossibleMoves()
     {
-        return null;
-        return new List<Tile> {
-            board.TileAt(pos + new Vector2Int(1, 1)), board.TileAt(pos + new Vector2Int(1, 0)), board.TileAt(pos + new Vector2Int(1, -1)), board.TileAt(pos + new Vector2Int(0, -1)),
-            board.TileAt(pos + new Vector2Int(-1, -1)), board.TileAt(pos + new Vector2Int(-1, 0)), board.TileAt(pos + new Vector2Int(-1, 1)), board.TileAt(pos + new Vector2Int(0, 1)) };
-    }
+        List<Tile> moves = new List<Tile>();
 
+        Tile[] possibleMoves = { //8 tiles around King
+            board.TileAt(pos + new Vector2Int(1, 1)), board.TileAt(pos + new Vector2Int(1, 0)), board.TileAt(pos + new Vector2Int(1, -1)), board.TileAt(pos + new Vector2Int(0, -1)),
+            board.TileAt(pos + new Vector2Int(-1, -1)), board.TileAt(pos + new Vector2Int(-1, 0)), board.TileAt(pos + new Vector2Int(-1, 1)), board.TileAt(pos + new Vector2Int(0, 1))
+        };
+
+        for(int i = 0; i < 8; i++)
+        {
+            if (possibleMoves[i] != null && (!IsAnAlly(possibleMoves[i]) || IsAnEnemy(possibleMoves[i])))
+                moves.Add(board.TileAt(possibleMoves[i].pos));
+        }
+        return moves;
+    }
+}
 
 
     /*
@@ -165,4 +213,3 @@ public class King : Piece
     }
 
     */
-}
