@@ -72,14 +72,22 @@ public class Piece : MonoBehaviour
         endTile.piece.pos = endTile.pos;
         startTile.piece = null;
 
-
         for (int i = 0; i < 64; i++)
         {
             if (board.state[i].piece != null && board.state[i].piece.isWhite != isWhite)
             {
-                List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
-                if (!board.state[i].piece.isAPawn && possibleMoves != null) //Enemy pawns can't check a king by reveal
-                    enemyPossibleMoves.AddRange(possibleMoves);
+                if (!board.state[i].piece.isAPawn)
+                {
+                    List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
+                    if (possibleMoves != null) //Enemy pawns can't check a king by reveal
+                        enemyPossibleMoves.AddRange(possibleMoves);
+                }
+                else
+                {
+                    List<Tile> pawnAttacks = board.state[i].piece.isAPawn.Attacks();
+                    if (pawnAttacks != null) //If a pawn is currently attacking the king, it needs to be eaten, or king needs to be moved away
+                        enemyPossibleMoves.AddRange(pawnAttacks);
+                }
             }
         }
 

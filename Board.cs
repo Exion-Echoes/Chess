@@ -75,29 +75,11 @@ public class Board : MonoBehaviour
             {
                 Debug.Log("Could place here");
 
-                //***
-                //***
-                //EAT PIECE IF ANY PRESENT
-                //Need to consider en passant pawns as well - might be placeable in CanMove
-                //***
-                //***
-
                 if (endTile.piece != null) //Check for regular eat
                     DistributeEatenPieces(ref endTile);
 
-                //
-                //
-                //WORK ENPASSANT - CURRENTLY I HAVE THE PAWN VARIABLE IN THIS SCRIPT, AND I WANT TO TURN IT ON IN THE CANMOVE SCRIPT
-                //if picked up piece isn'T enpassantpawn, then nullify the reference to that variable
-                //pawn :19:20 I am ascribing enpassant to the pawn that double moves
-                //am not sure yet how to best do this, I would like if the logic was contained and not scattered
-                //The enpassant pawn
-                //enPassantTile is active here, if it's not used, turn it off here, if it's used, turn it off ofc
-                //
-                //
-                HandleEnPassantLogic(startTile, endTile);
-
-
+                else//Consider en passant eat
+                    HandleEnPassantLogic(startTile, endTile);
 
                 grabbedPiece.transform.position = UnityUnits(endTile.pos); //Place grabbed piece into end tile
                 endTile.piece = grabbedPiece;
@@ -106,16 +88,19 @@ public class Board : MonoBehaviour
 
                 VerifyIfKingTileNeedsToBeUpdated(endTile); //If grabbedPiece is a king
 
+                if (!EnemyCanMove()) //In the case where there are no more possible enemy moves, the game's over, with a checkmate or a stalemate
+                {
+                    bool isEnemyKingChecked = IsEnemyKingChecked();
+                    if (isEnemyKingChecked)
+                        Debug.Log("Checkmate");
+                        //gameState = GameOver("Checkmate"); - show who won and who lost
+                    else
+                        Debug.Log("Stalemate");
+                    //gameState = GameOver("Stalemate");
+                }
+
                 if (grabbedPiece.isAPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Check pawn reached promotion line
                     gameState = PromotePawn;
-
-                //***
-                //***
-                //Need to look for a check against the king, a checkmate, and a stalemate
-                //Checkmate = king is checked and there are no available moves (possible moves)
-                //Stalemate = king is not checked and there are no available moves (moving anywhere would check the king)
-                //***
-                //***
 
                 else //Drop piece and return to regular play
                     gameState = PickAPiece;
@@ -136,6 +121,8 @@ public class Board : MonoBehaviour
 
     public Tile TileAt(Vector2Int pos) //Look at current board and return tile
     {
+        pos.x = Mathf.Clamp(pos.x, 0, 7); //Clamp to prevent wrapping issues (e.g. King at 0,7 could move to 7,7)
+        pos.y = Mathf.Clamp(pos.y, 0, 7);
         if (pos.x + 8 * pos.y < 64 && pos.x + 8 * pos.y >= 0)
             return state[pos.x + 8 * pos.y];
         return null;
@@ -246,19 +233,56 @@ public class Board : MonoBehaviour
     {
         if (s.piece.isAPawn != null)
         {
-            //If moved pawn moved diagonally above the enPassantTile, then the piece at enPassantTile is eaten
-            if (s.piece.pos == enPassantTile.pos - Vector2Int.right || s.piece.pos == enPassantTile.pos + Vector2Int.right)
+            if (e == TileAt(new Vector2Int(s.pos.x, s.pos.y + 2 * (s.piece.isWhite ? 1 : -1)))) //If pawn double moved, it becomes a pawn that may be eaten en passant
+                enPassantTile = e;
+
+            //If pawn moved diagonally above the enPassantTile, then the piece at enPassantTile is eaten
+            if (enPassantTile != null && enPassantTile.piece != null && (s.piece.pos == enPassantTile.pos - Vector2Int.right || s.piece.pos == enPassantTile.pos + Vector2Int.right))
             {
-                if (e.pos == enPassantTile.pos + Vector2Int.up)
+                if (e.pos == enPassantTile.pos + (s.piece.isWhite ? Vector2Int.up : Vector2Int.down) && s.piece.isWhite != enPassantTile.piece.isWhite)
                     DistributeEatenPieces(ref enPassantTile);
             }
-
-            //If this piece just became the en passant Pawn, I have to make sure it isn't reset straight away
-            if (s.piece.isAPawn.becameAnEnPassantPawn)
-                s.piece.isAPawn.becameAnEnPassantPawn = false;
-            else
-                enPassantTile = null;
         }
-        //I don't think this is gonna work because when the opponent will play, the flag will be turned off already, and the enpassanttile will be deleted
+        if (enPassantTile != null && enPassantTile.piece != null && s.piece.isWhite == enPassantTile.piece.isWhite)// && s.piece.isAPawn == null) //When a non-pawn piece is picked up on the next turn, the en passant possibility is nullified
+            enPassantTile = null;
+    }
+
+    bool IsEnemyKingChecked()
+    {
+        //Verify that king is attacked by grabbedPiece
+        List<Tile> pieceAttacks = new List<Tile>();
+        if (grabbedPiece.isAPawn == null)
+            pieceAttacks = grabbedPiece.PossibleMoves();
+        else
+            pieceAttacks = grabbedPiece.isAPawn.Attacks();
+        for (int i = 0; i < pieceAttacks.Count; i++)
+        {
+            if (pieceAttacks[i] == (grabbedPiece.isWhite ? bKTile : wKTile))
+                return true;
+        }
+        return false;
+    }
+
+    bool EnemyCanMove() //Look for possible moves that protect enemy king - return false as soon as one is found, otherwise it has to be checkmate
+    {
+        for (int i = 0; i < 64; i++)
+        {
+            if (state[i].piece != null && state[i].piece.isWhite != grabbedPiece.isWhite)
+            {
+                List<Tile> possibleMoves = state[i].piece.PossibleMoves();
+                if (possibleMoves != null)
+                {
+                    for (int j = 0; j < possibleMoves.Count; j++)
+                    {
+                        if (state[i].piece.CanMove(state[i], possibleMoves[j]))
+                        {
+                            Debug.Log(state[i].piece + ", " + state[i].pos + ", " + j + ", " + possibleMoves[j].pos);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

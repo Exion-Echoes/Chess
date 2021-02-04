@@ -50,7 +50,6 @@ public class Bishop : Piece
             if (y <= 7)
             {
                 y++;
-                //                Debug.Log(x + ", " + y + ", " + board.TileAt(new Vector2Int(x, y)).piece);
                 Tile tile = board.TileAt(new Vector2Int(x, y));
                 if (tile != null)
                 {

@@ -60,7 +60,6 @@ public class Rook : Piece
                     break;
             }
         }
-
         return moves;
     }
 }

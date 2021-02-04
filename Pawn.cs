@@ -8,8 +8,6 @@ public class Pawn : Piece
     public bool becameAnEnPassantPawn;
     public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
     {
-        becameAnEnPassantPawn = false;
-
         if (IsAnAlly(endTile)) //Cannot end at an allied tile
             return false;
 
@@ -17,15 +15,7 @@ public class Pawn : Piece
         if (moveAllowed)
         {
             if (!MovingChecksOwnKing(startTile, endTile))
-            {
-                //I'm assuming that if the code makes it here, the pawn movement will go through
-                if (endTile == board.TileAt(new Vector2Int(pos.x, pos.y + 2 * (isWhite ? 1 : -1))))
-                {
-                    board.enPassantTile = startTile;
-                    becameAnEnPassantPawn = true;
-                }
                 return true;
-            }
         }
         return false;
     }
@@ -53,10 +43,15 @@ public class Pawn : Piece
         for (int i = 2; i <= 3; i++) //Attacks
         {
             //If an enemy is present on the diagonal, or an enpassant pawn is ready, the movement is allowed
-            if (IsAnEnemy(possibleMoves[i]) || (board.enPassantTile != null && board.enPassantTile.pos.x == possibleMoves[i].pos.x))
+            if (IsAnEnemy(possibleMoves[i]) || (board.enPassantTile != null && board.enPassantTile.piece != null && board.enPassantTile.piece.isWhite != isWhite && board.enPassantTile.pos.x == possibleMoves[i].pos.x && board.enPassantTile.pos.y == pos.y))
                 moves.Add(possibleMoves[i]);
         }
 
+        if (this.pos == new Vector2Int(5, 4))
+        {
+  //          for (int i = 0; i < moves.Count; i++)
+//                Debug.Log(i + ", " + moves[i].pos);
+        }
         return moves;
     }
 }
