@@ -64,7 +64,7 @@ public class Queen : Piece
         int yVal = pos.y;
         for (int x = pos.x - 1; x >= 0; x--) //Upper left diagonal
         {
-            if (yVal <= 7)
+            if (yVal < 7)
             {
                 yVal++;
                 Tile tile = board.TileAt(new Vector2Int(x, yVal));
@@ -82,7 +82,7 @@ public class Queen : Piece
         yVal = pos.y;
         for (int x = pos.x - 1; x >= 0; x--) //Down left diagonal
         {
-            if (yVal >= 0)
+            if (yVal > 0)
             {
                 yVal--;
                 Tile tile = board.TileAt(new Vector2Int(x, yVal));
@@ -100,7 +100,7 @@ public class Queen : Piece
         yVal = pos.y;
         for (int x = pos.x + 1; x <= 7; x++) //Upper right diagonal
         {
-            if (yVal <= 7)
+            if (yVal < 7)
             {
                 yVal++;
                 Tile tile = board.TileAt(new Vector2Int(x, yVal));
@@ -118,7 +118,7 @@ public class Queen : Piece
         yVal = pos.y;
         for (int x = pos.x + 1; x <= 7; x++) //Down right diagonal
         {
-            if (yVal >= 0)
+            if (yVal > 0)
             {
                 yVal--;
                 Tile tile = board.TileAt(new Vector2Int(x, yVal));

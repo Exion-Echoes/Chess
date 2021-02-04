@@ -7,6 +7,11 @@ public class King : Piece
     public bool moved;
     public bool isChecked; //Limits movements this turn
 
+    public override void Start()
+    {
+        base.Start();
+    }
+
     public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
     {
         if (IsAnAlly(endTile)) //Cannot end at an allied tile
@@ -21,7 +26,7 @@ public class King : Piece
             if (!KingAttacked(startTile, endTile))
                 return true;
         }
-        return PerformCastling(endTile);
+        return PerformCastling(startTile, endTile);
     }
 
     bool KingAttacked(Tile startTile, Tile endTile)
@@ -41,7 +46,6 @@ public class King : Piece
         endTile.piece = startTile.piece;
         endTile.piece.pos = endTile.pos;
         startTile.piece = null;
-
 
         for (int i = 0; i < 64; i++)
         {
@@ -75,16 +79,54 @@ public class King : Piece
         return false;
     }
 
-    bool PerformCastling(Tile tile)
+    bool PerformCastling(Tile s, Tile e)
     {
-        //tile will be one left of right rook or two right of left rook
-        //Ensure there are empty tiles on the way there
-        //Ensure there are no enemies attacking the empty tiles
-        //Ensure king and chosen rook haven't moved all game
-        int distToRookTile = tile.pos.x + 1 - pos.x; //Castling would be triggered by moving king two tiles right or two tiles left
-//        if (!moved && (tile.pos.x + 1 - pos.x == 3 || distToRookTile == 4) && tile.piece)
+        List<Tile> enemyPossibleAttacks = DetermineEnemyAttacks();
 
-            return false;
+        if (!moved)
+        {
+            if (e.pos == new Vector2Int(2, (isWhite ? 0 : 7))) //If trying to castle to the left
+            {
+                if ((isWhite ? board.lWRookTile.piece != null : board.lBRookTile.piece != null) && ((isWhite ? board.lWRookTile.piece.isARook != null : board.lBRookTile.piece.isARook != null)))
+                {
+                    Rook lRook = (isWhite ? board.lWRookTile.piece.isARook : board.lBRookTile.piece.isARook);
+                    if (!lRook.moved) //Can only castle if none of the two pieces moved
+                    {
+                        //Check if any enemy are attacking the three tiles from the King to where it wants to castle
+                        for (int i = 0; i < 3; i++)
+                        {
+                            for (int j = 0; j < enemyPossibleAttacks.Count; j++)
+                            {
+                                if (enemyPossibleAttacks[j] == board.TileAt(pos + new Vector2Int(-i, 0)))
+                                    return false;
+                            }
+                        }
+                        return true; //Castling is allowed
+                    }
+                }
+            }
+            if (e.pos == new Vector2Int(6, (isWhite ? 0 : 7))) //If trying to castle to the left
+            {
+                if ((isWhite ? board.rWRookTile.piece != null : board.rBRookTile.piece != null) && ((isWhite ? board.rWRookTile.piece.isARook != null : board.rBRookTile.piece.isARook != null)))
+                {
+                    Rook rRook = (isWhite ? board.rWRookTile.piece.isARook : board.rBRookTile.piece.isARook);
+                    if (!rRook.moved) //Can only castle if none of the two pieces moved
+                    {
+                        //Check if any enemy are attacking the three tiles from the King to where it wants to castle
+                        for (int i = 0; i < 3; i++)
+                        {
+                            for (int j = 0; j < enemyPossibleAttacks.Count; j++)
+                            {
+                                if (enemyPossibleAttacks[j] == board.TileAt(pos + new Vector2Int(i, 0)))
+                                    return false;
+                            }
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     public override List<Tile> PossibleMoves()

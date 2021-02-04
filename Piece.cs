@@ -9,6 +9,8 @@ public class Piece : MonoBehaviour
     public Vector2Int pos;
     public List<Vector2Int> attacks = new List<Vector2Int>();
     public Pawn isAPawn;
+    public Rook isARook;
+    public King isAKing;
 
     public SpriteRenderer sr;
     public Board board;
@@ -21,6 +23,8 @@ public class Piece : MonoBehaviour
     public virtual void Start()
     {
         isAPawn = GetComponent<Pawn>();
+        isARook = GetComponent<Rook>();
+        isAKing = GetComponent<King>();
     }
 
     public virtual bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
@@ -122,5 +126,29 @@ public class Piece : MonoBehaviour
             }
         }
         return false;
+    }
+
+    public List<Tile> DetermineEnemyAttacks()
+    {
+        List<Tile> enemyPossibleMoves = new List<Tile>();
+        for (int i = 0; i < 64; i++)
+        {
+            if (board.state[i].piece != null && board.state[i].piece.isWhite != isWhite)
+            {
+                if (!board.state[i].piece.isAPawn) //Enemy pawns don't attack king according to their possible moves
+                {
+                    List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
+                    if (possibleMoves != null)
+                        enemyPossibleMoves.AddRange(possibleMoves);
+                }
+                else //King can't move where pawns may attack
+                {
+                    List<Tile> pawnAttacks = board.state[i].piece.isAPawn.Attacks();
+                    if (pawnAttacks != null)
+                        enemyPossibleMoves.AddRange(pawnAttacks);
+                }
+            }
+        }
+        return enemyPossibleMoves;
     }
 }

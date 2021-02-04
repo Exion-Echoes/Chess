@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class Rook : Piece
 {
+    public bool moved;
     public override List<Tile> PossibleMoves() //Any allowed movement must be part of this list
     {
         List<Tile> moves = new List<Tile>();

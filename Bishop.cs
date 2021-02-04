@@ -11,7 +11,7 @@ public class Bishop : Piece
         int y = pos.y;
         for (int x = pos.x - 1; x >= 0; x--) //Upper left diagonal
         {
-            if (y <= 7)
+            if (y < 7)
             {
                 y++;
                 Tile tile = board.TileAt(new Vector2Int(x, y));
@@ -29,7 +29,7 @@ public class Bishop : Piece
         y = pos.y;
         for (int x = pos.x - 1; x >= 0; x--) //Down left diagonal
         {
-            if (y >= 0)
+            if (y > 0)
             {
                 y--;
                 Tile tile = board.TileAt(new Vector2Int(x, y));
@@ -47,7 +47,7 @@ public class Bishop : Piece
         y = pos.y;
         for (int x = pos.x + 1; x <= 7; x++) //Upper right diagonal
         {
-            if (y <= 7)
+            if (y < 7)
             {
                 y++;
                 Tile tile = board.TileAt(new Vector2Int(x, y));
@@ -65,7 +65,7 @@ public class Bishop : Piece
         y = pos.y;
         for (int x = pos.x + 1; x <= 7; x++) //Down right diagonal
         {
-            if (y >= 0)
+            if (y > 0)
             {
                 y--;
                 Tile tile = board.TileAt(new Vector2Int(x, y));
