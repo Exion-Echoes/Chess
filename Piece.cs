@@ -46,7 +46,7 @@ public class Piece : MonoBehaviour
 
     public bool IsAnAlly(Tile endTile)
     {
-        if (endTile != null && endTile.piece != null && endTile.piece.isWhite == isWhite)// && !endTile.piece.hidden)
+        if (endTile != null && endTile.piece != null && endTile.piece.isWhite == isWhite)
             return true;
         return false;
     }

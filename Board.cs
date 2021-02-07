@@ -36,10 +36,12 @@ public class Board : MonoBehaviour
     public Tile startTile, wKTile, bKTile; //King tiles need to be updated (Pieces wouldn't have to, but I would still need to keep track of their pos)
     public Tile lWRookTile, rWRookTile, lBRookTile, rBRookTile;
     public Tile enPassantTile; //Needs to be reset as soon as a move is made after this has been turned on
+    public SpriteRenderer[] promoSprites;
 
     public void Awake()
     {
         state = InitialBoardState();
+        promoSprites = InitiatePromotionObjects();
 
         gameState = PickAPiece;
     }
@@ -65,6 +67,7 @@ public class Board : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) //Left click
         {
             Tile tile = TileAt(BoardUnits(mousePos));
+            Debug.Log(tile.piece);
             if (tile != null && tile.piece != null)
             {
                 startTile = tile;
@@ -100,26 +103,19 @@ public class Board : MonoBehaviour
 
                 VerifyIfKingTileNeedsToBeUpdated(endTile); //If grabbedPiece is a king
 
-                if (!EnemyCanMove()) //In the case where there are no more possible enemy moves, the game's over, with a checkmate or a stalemate
-                {
-                    bool isEnemyKingChecked = IsEnemyKingChecked();
-                    if (isEnemyKingChecked)
-                        Debug.Log("Checkmate");
-                    //gameState = GameOver("Checkmate"); - show who won and who lost
-                    else
-                        Debug.Log("Stalemate");
-                    //gameState = GameOver("Stalemate");
-                }
-
                 //See if castling just occured
                 if (grabbedPiece.isAKing != null && !grabbedPiece.isAKing.moved && Mathf.Abs(startTile.pos.x - endTile.pos.x) == 2)
                     MoveRookForCastling(grabbedPiece.isAKing);
 
                 if (grabbedPiece.isAPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Check pawn reached promotion line
+                {
+                    HandlePawnPromotionsMenuDisplay(grabbedPiece, true);
                     gameState = PromotePawn;
-
+                }
                 else //Drop piece and return to regular play
                     gameState = PickAPiece;
+
+                IsGameOver();
 
                 //This should be done by a delegate waiting for CanMove to be called for the relevant pieces, but for now i'm just gonna put it here
                 #region TURN ON moved BOOLS ON KINGS AND ROOKS, IF NEEDED
@@ -144,21 +140,116 @@ public class Board : MonoBehaviour
 
     public void PromotePawn()
     {
-        Debug.Log("Promote pawn");
-        //Produce pawn promotion board and 4 pieces (with possibility of highlighting the one hovered over by the mouse cursor
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-        //***
-        //***
-        //DO THIS AFTER CASTLING
-        //***
-        //***
+        void ChangePawn(int i) //Turn grabbedPiece.isAPawn into a piece with a new logic
+        {
+            Sprite[] pieceSprites = Resources.LoadAll<Sprite>("Pieces");
+
+            Tile tile = TileAt(grabbedPiece.pos);
+            Destroy(tile.piece.gameObject);
+            switch (i) // i = [1, 4] = white, i = [5,8] = black (queen, rook, knight, bishop)
+            {
+                case 1:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Queen>(), pieceSprites[9], UnityUnits(tile.pos), true);
+                    break;
+                case 2:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Rook>(), pieceSprites[6], UnityUnits(tile.pos), true);
+                    break;
+                case 3:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Knight>(), pieceSprites[7], UnityUnits(tile.pos), true);
+                    break;
+                case 4:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Bishop>(), pieceSprites[8], UnityUnits(tile.pos), true);
+                    break;
+                case 5:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Queen>(), pieceSprites[3], UnityUnits(tile.pos), false);
+                    break;
+                case 6:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Rook>(), pieceSprites[0], UnityUnits(tile.pos), false);
+                    break;
+                case 7:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Knight>(), pieceSprites[1], UnityUnits(tile.pos), false);
+                    break;
+                case 8:
+                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Bishop>(), pieceSprites[2], UnityUnits(tile.pos), false);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        //After choosing
+        if (Input.GetMouseButtonDown(0)) //Left click
+        {
+            for(int i = 1; i <= 4; i++)
+            {
+                Vector3 promoPos = (grabbedPiece.isWhite ? promoSprites[i] : promoSprites[i + 4]).transform.position;
+                if (mousePos.x > promoPos.x - 15 && mousePos.x < promoPos.x + 15 && mousePos.y > promoPos.y - 15 && mousePos.y < promoPos.y + 15)
+                {
+                    ChangePawn(grabbedPiece.isWhite ? i : i + 4);
+                    grabbedPiece = state[grabbedPiece.pos.x + 8 * grabbedPiece.pos.y].piece;
+                    HandlePawnPromotionsMenuDisplay(null, false);
+                    gameState = PickAPiece;
+                    IsGameOver(); //Promoting a pawn to a rook may checkmate or stalemate the opposing king
+                    break;
+                }
+            }
+        }
+    }
+
+    void GameOver()
+    {
+        //Game state to display game over screen after a checkmate occurred or a stalemate
+
+        //Need to let player navigate menu and click on options
+        //A generalized mouse-hovering-button-clicking script might be nice here
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        //Start with option to reset board (call state = InitiateBoardState(), with possibility of inverting pieces?)
+        if (Input.GetMouseButtonDown(0)) //Left click
+        {
+            Debug.Log("Restart");
+            Piece[] pieces = FindObjectsOfType<Piece>();
+            for (int i = 0; i < pieces.Length; i++)
+                Destroy(pieces[i].gameObject);
+
+            state = InitialBoardState();
+
+            //MAYBE INSTEAD OF REINITILIAZING, I CAN UNDO EVERY MOVE UP TO THE FIRST ONE
+
+            gameState = PickAPiece;
+        }
+
+    }
+
+    void HandlePawnPromotionsMenuDisplay(Piece p, bool reveal) //Reveal(true) or hide(false) pawn promotion options
+    {
+        if (reveal)
+        {
+            promoSprites[0].transform.position = UnityUnits(p.pos, -1f); //grabbedPiece (p) should have moved at this point, so p.pos should be accurate
+            (p.isWhite ? promoSprites[1] : promoSprites[5]).transform.position = UnityUnits(p.pos, -3f) - new Vector3(45, 0, 0);
+            (p.isWhite ? promoSprites[2] : promoSprites[6]).transform.position = UnityUnits(p.pos, -3f) - new Vector3(15, 0, 0);
+            (p.isWhite ? promoSprites[3] : promoSprites[7]).transform.position = UnityUnits(p.pos, -3f) + new Vector3(15, 0, 0);
+            (p.isWhite ? promoSprites[4] : promoSprites[8]).transform.position = UnityUnits(p.pos, -3f) + new Vector3(45, 0, 0);
+        }
+        else
+        {
+            for (int i = 0; i < 9; i++)
+                promoSprites[i].transform.position = new Vector3(0, 0, 1);
+        }
     }
 
     public Tile TileAt(Vector2Int pos) //Look at current board and return tile
     {
-        pos.x = Mathf.Clamp(pos.x, 0, 7); //Clamp to prevent wrapping issues (e.g. King at 0,7 could move to 7,7)
-        pos.y = Mathf.Clamp(pos.y, 0, 7);
-        if (pos.x + 8 * pos.y < 64 && pos.x + 8 * pos.y >= 0)
+        //      pos.x = Mathf.Clamp(pos.x, 0, 7); //Clamp to prevent wrapping issues (e.g. King at 0,7 could move to 7,7)
+        //        pos.y = Mathf.Clamp(pos.y, 0, 7);
+        //        Debug.Log(pos.x + ", " + pos.y);
+        if (pos.x >= 0 && pos.x <= 7 && pos.y >= 0 && pos.y <= 7)
+            //              {
+            //            if (pos.x + 8 * pos.y < 64 && pos.x + 8 * pos.y >= 0)
+            //                return state[pos.x + 8 * pos.y];
+            //        }
             return state[pos.x + 8 * pos.y];
         return null;
     }
@@ -234,6 +325,28 @@ public class Board : MonoBehaviour
         return boardState;
     }
 
+    SpriteRenderer[] InitiatePromotionObjects() //Produce pawn promotion board and 4 pieces (with possibility of highlighting the one hovered over by the mouse cursor)
+    {
+        SpriteRenderer[] promotionObjects = new SpriteRenderer[9];
+        Sprite[] pieceSprites = Resources.LoadAll<Sprite>("Pieces");
+        for (int i = 0; i < 9; i++)
+        {
+            promotionObjects[i] = new GameObject().AddComponent<SpriteRenderer>();
+            promotionObjects[i].transform.position = new Vector3(0, 0, 1);
+        }
+        promotionObjects[0].sprite = Resources.Load<Sprite>("PromoBackground");
+        promotionObjects[1].sprite = pieceSprites[9]; //Queen
+        promotionObjects[2].sprite = pieceSprites[6]; //Rook
+        promotionObjects[3].sprite = pieceSprites[7]; //Knight
+        promotionObjects[4].sprite = pieceSprites[8]; //Bishop
+        promotionObjects[5].sprite = pieceSprites[3]; //Queen
+        promotionObjects[6].sprite = pieceSprites[0]; //Rook
+        promotionObjects[7].sprite = pieceSprites[1]; //Knight
+        promotionObjects[8].sprite = pieceSprites[2]; //Bishop
+
+        return promotionObjects;
+    }
+
     public void DistributeEatenPieces(ref Tile tile)
     {
         Piece eatenPiece = new GameObject().AddComponent<Piece>();
@@ -252,7 +365,6 @@ public class Board : MonoBehaviour
             else
                 bCount++;
         }
-
         eatenPiece.transform.position = new Vector3((eatenPiece.isWhite ? 150 : 180), 120 - (eatenPiece.isWhite ? wCount : bCount) * 15, -1);
     }
 
@@ -316,6 +428,26 @@ public class Board : MonoBehaviour
                         }
                     }
                 }
+            }
+        }
+        return false;
+    }
+
+    bool IsGameOver()
+    {
+        bool enemyCanMove = EnemyCanMove(); //Look for checkmate/stalemate
+        bool isEnemyKingChecked = IsEnemyKingChecked();
+        if(!enemyCanMove)
+        {
+            if (!isEnemyKingChecked)
+            {
+                Debug.Log("Stalemate");
+                gameState = GameOver;
+            }
+            else
+            {
+                Debug.Log("Checkmate");
+                gameState = GameOver;
             }
         }
         return false;

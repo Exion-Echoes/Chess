@@ -43,7 +43,7 @@ public class Pawn : Piece
         for (int i = 2; i <= 3; i++) //Attacks
         {
             //If an enemy is present on the diagonal, or an enpassant pawn is ready, the movement is allowed
-            if (IsAnEnemy(possibleMoves[i]) || (board.enPassantTile != null && board.enPassantTile.piece != null && board.enPassantTile.piece.isWhite != isWhite && board.enPassantTile.pos.x == possibleMoves[i].pos.x && board.enPassantTile.pos.y == pos.y))
+            if (possibleMoves[i] != null && (IsAnEnemy(possibleMoves[i]) || (board.enPassantTile != null && board.enPassantTile.piece != null && board.enPassantTile.piece.isWhite != isWhite && board.enPassantTile.pos.x == possibleMoves[i].pos.x && board.enPassantTile.pos.y == pos.y)))
                 moves.Add(possibleMoves[i]);
         }
 
