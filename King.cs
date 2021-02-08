@@ -51,7 +51,7 @@ public class King : Piece
         {
             if (board.state[i].piece != null && board.state[i].piece.isWhite != isWhite)
             {
-                if (!board.state[i].piece.isAPawn) //Enemy pawns don't attack king according to their possible moves
+                if (!board.state[i].piece.isPawn) //Enemy pawns don't attack king according to their possible moves
                 {
                     List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
                     if(possibleMoves != null)
@@ -59,7 +59,7 @@ public class King : Piece
                 }
                 else //King can't move where pawns may attack
                 {
-                    List<Tile> pawnAttacks = board.state[i].piece.isAPawn.Attacks();
+                    List<Tile> pawnAttacks = board.state[i].piece.isPawn.Attacks();
                     if (pawnAttacks != null)
                         enemyPossibleMoves.AddRange(pawnAttacks);
                 }
@@ -87,9 +87,9 @@ public class King : Piece
         {
             if (e.pos == new Vector2Int(2, (isWhite ? 0 : 7))) //If trying to castle to the left
             {
-                if ((isWhite ? board.lWRookTile.piece != null : board.lBRookTile.piece != null) && ((isWhite ? board.lWRookTile.piece.isARook != null : board.lBRookTile.piece.isARook != null)))
+                if ((isWhite ? board.lWRookTile.piece != null : board.lBRookTile.piece != null) && ((isWhite ? board.lWRookTile.piece.isRook != null : board.lBRookTile.piece.isRook != null)))
                 {
-                    Rook lRook = (isWhite ? board.lWRookTile.piece.isARook : board.lBRookTile.piece.isARook);
+                    Rook lRook = (isWhite ? board.lWRookTile.piece.isRook : board.lBRookTile.piece.isRook);
                     if (!lRook.moved) //Can only castle if none of the two pieces moved
                     {
                         //Check if any enemy are attacking the three tiles from the King to where it wants to castle
@@ -107,9 +107,9 @@ public class King : Piece
             }
             if (e.pos == new Vector2Int(6, (isWhite ? 0 : 7))) //If trying to castle to the left
             {
-                if ((isWhite ? board.rWRookTile.piece != null : board.rBRookTile.piece != null) && ((isWhite ? board.rWRookTile.piece.isARook != null : board.rBRookTile.piece.isARook != null)))
+                if ((isWhite ? board.rWRookTile.piece != null : board.rBRookTile.piece != null) && ((isWhite ? board.rWRookTile.piece.isRook != null : board.rBRookTile.piece.isRook != null)))
                 {
-                    Rook rRook = (isWhite ? board.rWRookTile.piece.isARook : board.rBRookTile.piece.isARook);
+                    Rook rRook = (isWhite ? board.rWRookTile.piece.isRook : board.rBRookTile.piece.isRook);
                     if (!rRook.moved) //Can only castle if none of the two pieces moved
                     {
                         //Check if any enemy are attacking the three tiles from the King to where it wants to castle

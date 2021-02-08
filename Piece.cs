@@ -8,9 +8,12 @@ public class Piece : MonoBehaviour
     public bool isWhite;
     public Vector2Int pos;
     public List<Vector2Int> attacks = new List<Vector2Int>();
-    public Pawn isAPawn;
-    public Rook isARook;
-    public King isAKing;
+    public Pawn isPawn;
+    public Rook isRook;
+    public King isKing;
+    public Queen isQueen;
+    public Knight isKnight;
+    public Bishop isBishop;
 
     public SpriteRenderer sr;
     public Board board;
@@ -22,12 +25,15 @@ public class Piece : MonoBehaviour
 
     public virtual void Start()
     {
-        isAPawn = GetComponent<Pawn>();
-        isARook = GetComponent<Rook>();
-        isAKing = GetComponent<King>();
+        isPawn = GetComponent<Pawn>();
+        isRook = GetComponent<Rook>();
+        isKing = GetComponent<King>();
+        isQueen = GetComponent<Queen>();
+        isKnight = GetComponent<Knight>();
+        isBishop = GetComponent<Bishop>();
     }
 
-    public virtual bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
+public virtual bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
     {
         if (IsAnAlly(endTile)) //Cannot end at an allied tile
             return false;
@@ -80,7 +86,7 @@ public class Piece : MonoBehaviour
         {
             if (board.state[i].piece != null && board.state[i].piece.isWhite != isWhite)
             {
-                if (!board.state[i].piece.isAPawn)
+                if (!board.state[i].piece.isPawn)
                 {
                     List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
                     if (possibleMoves != null) //Enemy pawns can't check a king by reveal
@@ -88,7 +94,7 @@ public class Piece : MonoBehaviour
                 }
                 else
                 {
-                    List<Tile> pawnAttacks = board.state[i].piece.isAPawn.Attacks();
+                    List<Tile> pawnAttacks = board.state[i].piece.isPawn.Attacks();
                     if (pawnAttacks != null) //If a pawn is currently attacking the king, it needs to be eaten, or king needs to be moved away
                         enemyPossibleMoves.AddRange(pawnAttacks);
                 }
@@ -135,7 +141,7 @@ public class Piece : MonoBehaviour
         {
             if (board.state[i].piece != null && board.state[i].piece.isWhite != isWhite)
             {
-                if (!board.state[i].piece.isAPawn) //Enemy pawns don't attack king according to their possible moves
+                if (!board.state[i].piece.isPawn) //Enemy pawns don't attack king according to their possible moves
                 {
                     List<Tile> possibleMoves = board.state[i].piece.PossibleMoves();
                     if (possibleMoves != null)
@@ -143,7 +149,7 @@ public class Piece : MonoBehaviour
                 }
                 else //King can't move where pawns may attack
                 {
-                    List<Tile> pawnAttacks = board.state[i].piece.isAPawn.Attacks();
+                    List<Tile> pawnAttacks = board.state[i].piece.isPawn.Attacks();
                     if (pawnAttacks != null)
                         enemyPossibleMoves.AddRange(pawnAttacks);
                 }
@@ -151,4 +157,22 @@ public class Piece : MonoBehaviour
         }
         return enemyPossibleMoves;
     }
+
+    public string IdentifyThis()
+    {
+        if (isPawn)
+            return "";
+        if (isRook)
+            return "R";
+        if (isKing)
+            return "K";
+        if (isQueen)
+            return "Q";
+        if (isKnight)
+            return "N";
+        if (isBishop)
+            return "B";
+        return null;
+    }
+
 }

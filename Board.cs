@@ -58,6 +58,10 @@ public class Board : MonoBehaviour
     public void Update()
     {
         gameState();
+
+        //Prototype - this should be a function subbed to a grabbedPiece-confirmed-dropped event
+        if (Input.GetMouseButtonUp(0))
+            Debug.Log(grabbedPiece.IdentifyThis() + " " + grabbedPiece.pos.ToString());
     }
 
     public void PickAPiece()
@@ -104,10 +108,10 @@ public class Board : MonoBehaviour
                 VerifyIfKingTileNeedsToBeUpdated(endTile); //If grabbedPiece is a king
 
                 //See if castling just occured
-                if (grabbedPiece.isAKing != null && !grabbedPiece.isAKing.moved && Mathf.Abs(startTile.pos.x - endTile.pos.x) == 2)
-                    MoveRookForCastling(grabbedPiece.isAKing);
+                if (grabbedPiece.isKing != null && !grabbedPiece.isKing.moved && Mathf.Abs(startTile.pos.x - endTile.pos.x) == 2)
+                    MoveRookForCastling(grabbedPiece.isKing);
 
-                if (grabbedPiece.isAPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Check pawn reached promotion line
+                if (grabbedPiece.isPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Check pawn reached promotion line
                 {
                     HandlePawnPromotionsMenuDisplay(grabbedPiece, true);
                     gameState = PromotePawn;
@@ -119,14 +123,14 @@ public class Board : MonoBehaviour
 
                 //This should be done by a delegate waiting for CanMove to be called for the relevant pieces, but for now i'm just gonna put it here
                 #region TURN ON moved BOOLS ON KINGS AND ROOKS, IF NEEDED
-                if (grabbedPiece.isAKing != null)
-                    grabbedPiece.isAKing.moved = true;
+                if (grabbedPiece.isKing != null)
+                    grabbedPiece.isKing.moved = true;
                 bool IsItARook(Tile rookTile)
                 {
-                    return rookTile.piece != null && rookTile.piece.isARook != null && grabbedPiece == rookTile.piece;
+                    return rookTile.piece != null && rookTile.piece.isRook != null && grabbedPiece == rookTile.piece;
                 }
                 if (IsItARook(lWRookTile) || IsItARook(rWRookTile) || IsItARook(lBRookTile) || IsItARook(rBRookTile))
-                    grabbedPiece.isARook.moved = true;
+                    grabbedPiece.isRook.moved = true;
                 #endregion
             }
             else
@@ -209,7 +213,7 @@ public class Board : MonoBehaviour
         //Start with option to reset board (call state = InitiateBoardState(), with possibility of inverting pieces?)
         if (Input.GetMouseButtonDown(0)) //Left click
         {
-            Debug.Log("Restart");
+            Debug.Log("Reset the game");
             Piece[] pieces = FindObjectsOfType<Piece>();
             for (int i = 0; i < pieces.Length; i++)
                 Destroy(pieces[i].gameObject);
@@ -221,6 +225,12 @@ public class Board : MonoBehaviour
             gameState = PickAPiece;
         }
 
+        //NEED BASIC GAMEOVER WORKING
+        //NEED MOVE TRACKING - AND POSSIBILITY OF UNDOING - would be nice to make a event/listener function here
+        //NEED PROPER ORDER - GIVE FREE-FOR-FALL OPTION, STANDARD OPTION (WHITE-BLACK TAKE TURNS), AND OPTION TO PLAY AGAINST A COMPUTER
+        //ALLOW A COMPUTER TO PLAY (START AS BLACK, AND INCLUDE WHITE AFTER)
+        //MINIMAL VIABLE PRODUCT WOULD INCLUDE computer playing
+        //  Have to rework the move functions so that they can be controlled by a player, and by a computer
     }
 
     void HandlePawnPromotionsMenuDisplay(Piece p, bool reveal) //Reveal(true) or hide(false) pawn promotion options
@@ -242,14 +252,7 @@ public class Board : MonoBehaviour
 
     public Tile TileAt(Vector2Int pos) //Look at current board and return tile
     {
-        //      pos.x = Mathf.Clamp(pos.x, 0, 7); //Clamp to prevent wrapping issues (e.g. King at 0,7 could move to 7,7)
-        //        pos.y = Mathf.Clamp(pos.y, 0, 7);
-        //        Debug.Log(pos.x + ", " + pos.y);
         if (pos.x >= 0 && pos.x <= 7 && pos.y >= 0 && pos.y <= 7)
-            //              {
-            //            if (pos.x + 8 * pos.y < 64 && pos.x + 8 * pos.y >= 0)
-            //                return state[pos.x + 8 * pos.y];
-            //        }
             return state[pos.x + 8 * pos.y];
         return null;
     }
@@ -378,7 +381,7 @@ public class Board : MonoBehaviour
 
     void HandleEnPassantLogic(Tile s, Tile e)
     {
-        if (s.piece.isAPawn != null)
+        if (s.piece.isPawn != null)
         {
             if (e == TileAt(new Vector2Int(s.pos.x, s.pos.y + 2 * (s.piece.isWhite ? 1 : -1)))) //If pawn double moved, it becomes a pawn that may be eaten en passant
                 enPassantTile = e;
@@ -398,10 +401,10 @@ public class Board : MonoBehaviour
     {
         //Verify that king is attacked by grabbedPiece
         List<Tile> pieceAttacks = new List<Tile>();
-        if (grabbedPiece.isAPawn == null)
+        if (grabbedPiece.isPawn == null)
             pieceAttacks = grabbedPiece.PossibleMoves();
         else
-            pieceAttacks = grabbedPiece.isAPawn.Attacks();
+            pieceAttacks = grabbedPiece.isPawn.Attacks();
         for (int i = 0; i < pieceAttacks.Count; i++)
         {
             if (pieceAttacks[i] == (grabbedPiece.isWhite ? bKTile : wKTile))
