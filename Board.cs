@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,6 +31,12 @@ public class Board : MonoBehaviour
     delegate void GameStateDelegate();
     GameStateDelegate gameState;
 
+    //    Action
+    public delegate void NotifyPieceMoved(Piece p, Tile s, Tile e);
+    public NotifyPieceMoved notifyPieceMoved;
+
+    private List<string> trackedMoves = new List<string>();
+
     public Tile[] state = new Tile[64];
     public Piece grabbedPiece; //Piece being operated on
     public List<Piece> eatenPieces = new List<Piece>();
@@ -41,7 +48,7 @@ public class Board : MonoBehaviour
     public void Awake()
     {
         state = InitialBoardState();
-        promoSprites = InitiatePromotionObjects();
+        promoSprites = InitiatePawnPromotionObjects();
 
         gameState = PickAPiece;
     }
@@ -49,19 +56,44 @@ public class Board : MonoBehaviour
     private void Start()
     {
         //Define rooks references - Kings are initiated after Rooks, so there should be no problem relying on piece.isARook
-        lWRookTile = state[0];
-        rWRookTile = state[7];
-        lBRookTile = state[0 + 7 * 8];
-        rBRookTile = state[7 + 7 * 8];
+        notifyPieceMoved += TrackMoves;
+        notifyPieceMoved += lWRookTile.piece.GetComponent<Rook>().CheckIfMovedAndIfCastled; //Castling isn't allowed after rook moves
+        notifyPieceMoved += rWRookTile.piece.GetComponent<Rook>().CheckIfMovedAndIfCastled;
+        notifyPieceMoved += lBRookTile.piece.GetComponent<Rook>().CheckIfMovedAndIfCastled;
+        notifyPieceMoved += rBRookTile.piece.GetComponent<Rook>().CheckIfMovedAndIfCastled;
+        notifyPieceMoved += wKTile.piece.GetComponent<King>().CheckIfMoved;
+        notifyPieceMoved += bKTile.piece.GetComponent<King>().CheckIfMoved;
+        notifyPieceMoved += wKTile.piece.GetComponent<King>().UpdateKingTile;
+        notifyPieceMoved += bKTile.piece.GetComponent<King>().UpdateKingTile;
+        for (int i = 0; i < 64; i++)
+        {
+            if (state[i].piece != null && state[i].piece.GetComponent<Pawn>() != null)
+                notifyPieceMoved += state[i].piece.GetComponent<Pawn>().EnPassantCheck;
+        }
+        //Maybe these can be part of the InitiatePiece functions, with a complete reset of the notifier delegate beforehand
+
+        //**********DON't FORGET THAT THESE HAVE TO BE RESET AS WELL WHEN RE-INITILIAZING A BOARD
+
+        //
+        //THESE DELEGATES WORK, BUT NOW THE CASTLING HANDLING FUNCTION FAILS AS IT NEEDS KING TO HAVE MOVED AND TO HAVE ITS BOOL moved BE FALSE, SO I NEED A DIFFERENT METHOD
+        //MAYBE THE moved SHOULD BE RENAMED TO movedForTheFirstTime, IN WHICH CASE IF CASTLING OCCURRED, THEN GO AHEAD AND ACHIEVE THE MOVEMENT
+        //MAYBE THE CASTLING LOGIC COULD BE PLACED IN THE NOTIFYPIECEMOVED KING/ROOK LISTENERS
+        //
+
     }
 
     public void Update()
     {
         gameState();
 
-        //Prototype - this should be a function subbed to a grabbedPiece-confirmed-dropped event
-        if (Input.GetMouseButtonUp(0))
-            Debug.Log(grabbedPiece.IdentifyThis() + " " + grabbedPiece.pos.ToString());
+        //NEED BASIC GAMEOVER WORKING
+        //NEED PROPER ORDER - GIVE FREE-FOR-FALL OPTION, STANDARD OPTION (WHITE-BLACK TAKE TURNS), AND OPTION TO PLAY AGAINST A COMPUTER
+        //ALLOW A COMPUTER TO PLAY (START AS BLACK, AND INCLUDE WHITE AFTER)
+        //MINIMAL VIABLE PRODUCT WOULD INCLUDE computer playing
+        //  Have to rework the move functions so that they can be controlled by a player, and by a computer (AI needs to handle mousePos and decision-making)
+        //  gameState needs to take in player/AI flag, and screenPos input
+        //part of cleaning code could be removing as many instances of != null as possible
+        //NEXT - MAKE STATE FUNCTIONS ABSTRACT SO THAT AN AI CAN MAKE DECISIONS
     }
 
     public void PickAPiece()
@@ -71,7 +103,6 @@ public class Board : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) //Left click
         {
             Tile tile = TileAt(BoardUnits(mousePos));
-            Debug.Log(tile.piece);
             if (tile != null && tile.piece != null)
             {
                 startTile = tile;
@@ -94,22 +125,25 @@ public class Board : MonoBehaviour
             {
                 Debug.Log("Could place here");
 
-                if (endTile.piece != null) //Check for regular eat
-                    DistributeEatenPieces(ref endTile);
+                notifyPieceMoved(grabbedPiece, startTile, endTile);
 
-                else //Consider en passant eat
-                    HandleEnPassantLogic(startTile, endTile);
+                if (endTile.piece != null) //Check for regular eating
+                    DistributeEatenPieces(endTile);
+                else if (grabbedPiece.isPawn != null && grabbedPiece.isPawn.enPassantPawn != null)// && endTile.pos.y == startTile.pos.y + 1 * (int)Mathf.Sign(endTile.pos.y - startTile.pos.y)) //Consider en passant eating
+                {
+                    Debug.Log("eat enpassant");
+                    DistributeEatenPieces(TileAt(grabbedPiece.isPawn.enPassantPawn.pos));
+                }
+//                    HandleEnPassantLogic(startTile, endTile);
+
+                    //I think I can put the en passant logic in a delegate - as soon as a pawn double moves, evey enemy pawn determines whether they are close enough to en passant eat
+                    //When a pawn moves, see if pawn has a en passant flag, and turn it off accordingly
+
 
                 grabbedPiece.transform.position = UnityUnits(endTile.pos); //Place grabbed piece into end tile
                 endTile.piece = grabbedPiece;
                 endTile.piece.pos = endTile.pos;
                 startTile.piece = null;
-
-                VerifyIfKingTileNeedsToBeUpdated(endTile); //If grabbedPiece is a king
-
-                //See if castling just occured
-                if (grabbedPiece.isKing != null && !grabbedPiece.isKing.moved && Mathf.Abs(startTile.pos.x - endTile.pos.x) == 2)
-                    MoveRookForCastling(grabbedPiece.isKing);
 
                 if (grabbedPiece.isPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Check pawn reached promotion line
                 {
@@ -117,21 +151,9 @@ public class Board : MonoBehaviour
                     gameState = PromotePawn;
                 }
                 else //Drop piece and return to regular play
-                    gameState = PickAPiece;
+                    gameState = PickAPiece; //**Not sure how this helps, but it does (makes pieces less sticky when clicking mouseUp)
 
                 IsGameOver();
-
-                //This should be done by a delegate waiting for CanMove to be called for the relevant pieces, but for now i'm just gonna put it here
-                #region TURN ON moved BOOLS ON KINGS AND ROOKS, IF NEEDED
-                if (grabbedPiece.isKing != null)
-                    grabbedPiece.isKing.moved = true;
-                bool IsItARook(Tile rookTile)
-                {
-                    return rookTile.piece != null && rookTile.piece.isRook != null && grabbedPiece == rookTile.piece;
-                }
-                if (IsItARook(lWRookTile) || IsItARook(rWRookTile) || IsItARook(lBRookTile) || IsItARook(rBRookTile))
-                    grabbedPiece.isRook.moved = true;
-                #endregion
             }
             else
             {
@@ -224,13 +246,6 @@ public class Board : MonoBehaviour
 
             gameState = PickAPiece;
         }
-
-        //NEED BASIC GAMEOVER WORKING
-        //NEED MOVE TRACKING - AND POSSIBILITY OF UNDOING - would be nice to make a event/listener function here
-        //NEED PROPER ORDER - GIVE FREE-FOR-FALL OPTION, STANDARD OPTION (WHITE-BLACK TAKE TURNS), AND OPTION TO PLAY AGAINST A COMPUTER
-        //ALLOW A COMPUTER TO PLAY (START AS BLACK, AND INCLUDE WHITE AFTER)
-        //MINIMAL VIABLE PRODUCT WOULD INCLUDE computer playing
-        //  Have to rework the move functions so that they can be controlled by a player, and by a computer
     }
 
     void HandlePawnPromotionsMenuDisplay(Piece p, bool reveal) //Reveal(true) or hide(false) pawn promotion options
@@ -254,15 +269,15 @@ public class Board : MonoBehaviour
     {
         if (pos.x >= 0 && pos.x <= 7 && pos.y >= 0 && pos.y <= 7)
             return state[pos.x + 8 * pos.y];
-        return null;
+        return null; //Null is used for OOB cases
     }
 
-    Vector3 UnityUnits(Vector2Int pos, float z = 0)
+    public Vector3 UnityUnits(Vector2Int pos, float z = 0)
     {
         return new Vector3(-105 + pos.x * 30, -105 + pos.y * 30, -1 + z);
     }
 
-    Vector2Int BoardUnits(Vector3 pos)
+    public Vector2Int BoardUnits(Vector3 pos)
     {
         if (pos.x >= -120 && pos.x <= 120 && pos.y >= -120 && pos.y <= 120)
             return new Vector2Int((int)(120 + pos.x) / 30, (int)(120 + pos.y) / 30);
@@ -276,7 +291,7 @@ public class Board : MonoBehaviour
 
         Vector2Int piecePos;
         piecePos = new Vector2Int(0, 0);
-        boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[6], UnityUnits(piecePos), true);
+        lWRookTile = boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[6], UnityUnits(piecePos), true);
         piecePos = new Vector2Int(1, 0);
         boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Knight>(), pieceSprites[7], UnityUnits(piecePos), true);
         piecePos = new Vector2Int(2, 0);
@@ -288,7 +303,7 @@ public class Board : MonoBehaviour
         piecePos = new Vector2Int(6, 0);
         boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Knight>(), pieceSprites[7], UnityUnits(piecePos), true);
         piecePos = new Vector2Int(7, 0);
-        boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[6], UnityUnits(piecePos), true);
+        rWRookTile = boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[6], UnityUnits(piecePos), true);
         piecePos = new Vector2Int(4, 0);
         wKTile = boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<King>(), pieceSprites[10], UnityUnits(piecePos), true);
         for (int i = 0; i < 8; i++)
@@ -297,7 +312,7 @@ public class Board : MonoBehaviour
             boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Pawn>(), pieceSprites[11], UnityUnits(piecePos), true);
         }
         piecePos = new Vector2Int(0, 7);
-        boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[0], UnityUnits(piecePos), false);
+        lBRookTile = boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[0], UnityUnits(piecePos), false);
         piecePos = new Vector2Int(1, 7);
         boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Knight>(), pieceSprites[1], UnityUnits(piecePos), false);
         piecePos = new Vector2Int(2, 7);
@@ -309,7 +324,7 @@ public class Board : MonoBehaviour
         piecePos = new Vector2Int(6, 7);
         boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Knight>(), pieceSprites[1], UnityUnits(piecePos), false);
         piecePos = new Vector2Int(7, 7);
-        boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[0], UnityUnits(piecePos), false);
+        rBRookTile = boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<Rook>(), pieceSprites[0], UnityUnits(piecePos), false);
         piecePos = new Vector2Int(4, 7);
         bKTile = boardState[piecePos.x + 8 * piecePos.y] = new Tile(piecePos, new GameObject().AddComponent<King>(), pieceSprites[4], UnityUnits(piecePos), false);
         for (int i = 0; i < 8; i++)
@@ -328,7 +343,7 @@ public class Board : MonoBehaviour
         return boardState;
     }
 
-    SpriteRenderer[] InitiatePromotionObjects() //Produce pawn promotion board and 4 pieces (with possibility of highlighting the one hovered over by the mouse cursor)
+    SpriteRenderer[] InitiatePawnPromotionObjects() //Produce pawn promotion board and 4 pieces (with possibility of highlighting the one hovered over by the mouse cursor)
     {
         SpriteRenderer[] promotionObjects = new SpriteRenderer[9];
         Sprite[] pieceSprites = Resources.LoadAll<Sprite>("Pieces");
@@ -350,13 +365,10 @@ public class Board : MonoBehaviour
         return promotionObjects;
     }
 
-    public void DistributeEatenPieces(ref Tile tile)
+    public void DistributeEatenPieces(Tile tile)
     {
-        Piece eatenPiece = new GameObject().AddComponent<Piece>();
-        eatenPiece.gameObject.AddComponent<SpriteRenderer>().sprite = tile.piece.sr.sprite;
-        eatenPiece.isWhite = tile.piece.isWhite;
-        eatenPieces.Add(eatenPiece);
-        Destroy(tile.piece.gameObject);
+        eatenPieces.Add(tile.piece);
+        Destroy(tile.piece);
         tile.piece = null;
 
         int wCount = 0;
@@ -368,16 +380,15 @@ public class Board : MonoBehaviour
             else
                 bCount++;
         }
-        eatenPiece.transform.position = new Vector3((eatenPiece.isWhite ? 150 : 180), 120 - (eatenPiece.isWhite ? wCount : bCount) * 15, -1);
+        eatenPieces[eatenPieces.Count-1].transform.position = new Vector3((eatenPieces[eatenPieces.Count - 1].isWhite ? 150 : 180), 120 - (eatenPieces[eatenPieces.Count - 1].isWhite ? wCount : bCount) * 15, -1);
     }
 
-    void VerifyIfKingTileNeedsToBeUpdated(Tile endTile)
-    {
-        if (startTile == wKTile) //Check if king tile needs to be updated
-            wKTile = endTile;
-        else if (startTile == bKTile)
-            bKTile = endTile;
-    }
+    //**
+    //**
+    //LOOK AT HANDLE EN PASSANT LOGIC - WANT TO REPLACE THE FLAGGING WITH A DELEGATE POSSIBLY. I THINK EATING HAS TO STAY IN DSITRIBUTEEATENPIECES, AND EATING ENPASSANT NEEDS TO BE ADDED
+    //Subscribe each pawn to notify function, and unsubscribe when they move. When they double move, TileAt() two pieces beside, if a piece is there, subscribe to notify, and turn off and unsubscribe on the next loop, if en passant eating occurred or not
+    //**
+    //**
 
     void HandleEnPassantLogic(Tile s, Tile e)
     {
@@ -390,9 +401,10 @@ public class Board : MonoBehaviour
             if (enPassantTile != null && enPassantTile.piece != null && (s.piece.pos == enPassantTile.pos - Vector2Int.right || s.piece.pos == enPassantTile.pos + Vector2Int.right))
             {
                 if (e.pos == enPassantTile.pos + (s.piece.isWhite ? Vector2Int.up : Vector2Int.down) && s.piece.isWhite != enPassantTile.piece.isWhite)
-                    DistributeEatenPieces(ref enPassantTile);
+                    DistributeEatenPieces(enPassantTile);
             }
         }
+        //RESET EN PASSANT
         if (enPassantTile != null && enPassantTile.piece != null && s.piece.isWhite == enPassantTile.piece.isWhite)// && s.piece.isAPawn == null) //When a non-pawn piece is picked up on the next turn, the en passant possibility is nullified
             enPassantTile = null;
     }
@@ -425,10 +437,11 @@ public class Board : MonoBehaviour
                     for (int j = 0; j < possibleMoves.Count; j++)
                     {
                         if (state[i].piece.CanMove(state[i], possibleMoves[j]))
-                        {
-                            Debug.Log(state[i].piece + ", " + state[i].pos + ", " + j + ", " + possibleMoves[j].pos);
                             return true;
-                        }
+//                        {
+//                            Debug.Log(state[i].piece + ", " + state[i].pos + ", " + j + ", " + possibleMoves[j].pos);
+//                            return true;
+//                        }
                     }
                 }
             }
@@ -468,5 +481,49 @@ public class Board : MonoBehaviour
         tileNextToKing.piece.pos = tileNextToKing.pos;
         tileNextToKing.piece.transform.position = UnityUnits(tileNextToKing.piece.pos);
         rookTile.piece = null;
+    }
+
+    void TrackMoves(Piece p, Tile s, Tile e) //
+    {
+        #region CONVERT INT TO STRING
+        string Convert(int i)
+        {
+            switch (i)
+            {
+                case (0):
+                    return "a";
+                case (1):
+                    return "b";
+                case (2):
+                    return "c";
+                case (3):
+                    return "d";
+                case (4):
+                    return "e";
+                case (5):
+                    return "f";
+                case (6):
+                    return "g";
+                case (7):
+                    return "h";
+                default:
+                    return null;
+            }
+        }
+        #endregion
+
+        //        trackedMoves.Add((p.isWhite ? "w_" : "b_") + p.IdentifyThis() + Convert(e.pos.x) + (e.pos.y + 1).ToString());
+
+        string special = "";
+        if (e.piece != null) //It means the piece ate the one at this tile
+            special = " x ";
+
+        //NEED PAWN PROMOTION AND CASTLING SPECIAL
+
+        string addition = (p.isWhite ? "w " : "b ") + p.IdentifyThis() + special + Convert(e.pos.x) + (e.pos.y + 1).ToString();
+        Debug.Log(addition);
+
+        //THIS FUNCTION CAN BE REPLACED BY A NOTIFY FUNCTION TO ACHIEVE SOME RULES - TRACKING THE MOVES, 
+        //*******************DETERMINING WHETHER KING AND ROOK MOVED - I WILL USE IT FOR THIS ESPECIALLY
     }
 }

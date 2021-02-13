@@ -5,7 +5,9 @@ using UnityEngine;
 
 public class Pawn : Piece
 {
-    public bool becameAnEnPassantPawn;
+    public Pawn enPassantPawn;
+    bool overrideEnPassantPawn;
+
     public override bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
     {
         if (IsAnAlly(endTile)) //Cannot end at an allied tile
@@ -43,7 +45,7 @@ public class Pawn : Piece
         for (int i = 2; i <= 3; i++) //Attacks
         {
             //If an enemy is present on the diagonal, or an enpassant pawn is ready, the movement is allowed
-            if (possibleMoves[i] != null && (IsAnEnemy(possibleMoves[i]) || (board.enPassantTile != null && board.enPassantTile.piece != null && board.enPassantTile.piece.isWhite != isWhite && board.enPassantTile.pos.x == possibleMoves[i].pos.x && board.enPassantTile.pos.y == pos.y)))
+            if (possibleMoves[i] != null && (IsAnEnemy(possibleMoves[i]) || (enPassantPawn != null && enPassantPawn.pos + (isWhite ? Vector2Int.up : Vector2Int.down) == possibleMoves[i].pos)))//(board.enPassantTile != null && board.enPassantTile.piece != null && board.enPassantTile.piece.isWhite != isWhite && board.enPassantTile.pos.x == possibleMoves[i].pos.x && board.enPassantTile.pos.y == pos.y)))
                 moves.Add(possibleMoves[i]);
         }
 
@@ -53,5 +55,41 @@ public class Pawn : Piece
 //                Debug.Log(i + ", " + moves[i].pos);
         }
         return moves;
+    }
+
+    public void EnPassantCheck(Piece p, Tile s, Tile e)
+    {
+        if(p == this && (s.pos.y == 1 || s.pos.y == 6))
+        {
+            board.notifyPieceMoved -= EnPassantCheck; //Unsub from the notifications as soon as the pawn moves once
+            if (e.pos.y == s.pos.y + 2 * (int)Mathf.Sign(e.pos.y - s.pos.y)) //If double moved, work out the en passant logic
+            {
+                void SubscribeEnPassantPawn(Tile tile) //Identify neighbouring tiles to see if they're pawns and to turn on their en passant flag
+                {
+                    if (tile != null && tile.piece != null && tile.piece.isPawn != null)
+                    {
+                        tile.piece.isPawn.overrideEnPassantPawn = true;
+                        tile.piece.isPawn.enPassantPawn = this;
+                        board.notifyPieceMoved += tile.piece.isPawn.CanEatEnPassant;
+                    }
+                }
+                SubscribeEnPassantPawn(board.TileAt(e.pos - Vector2Int.right));
+                SubscribeEnPassantPawn(board.TileAt(e.pos + Vector2Int.right));
+
+//                Debug.Log("pawn of isWhite = " + isWhite + " just double moved");
+            }
+        }
+    }
+
+    public void CanEatEnPassant(Piece p, Tile s, Tile e)
+    {
+//        Debug.Log(pos + ", " + enPassantPawn.pos);
+        if(p.isWhite == !isWhite) //Guarantees that the en passant flag leaves on this color's next turn
+        {
+            board.notifyPieceMoved -= CanEatEnPassant; //Unsub even if the en passant movement doesn't occur
+            if(!overrideEnPassantPawn) //Need to add one more move of delay before resetting the enPassantPawn, in case two pawns in a row activate the en passant functionality
+                enPassantPawn = null;
+            overrideEnPassantPawn = false;
+        }
     }
 }

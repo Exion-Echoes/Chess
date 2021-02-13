@@ -85,13 +85,19 @@ public class King : Piece
 
         if (!moved)
         {
-            if (e.pos == new Vector2Int(2, (isWhite ? 0 : 7))) //If trying to castle to the left
+            if (e.pos == new Vector2Int(2, pos.y)) //If trying to castle to the left
             {
-                if ((isWhite ? board.lWRookTile.piece != null : board.lBRookTile.piece != null) && ((isWhite ? board.lWRookTile.piece.isRook != null : board.lBRookTile.piece.isRook != null)))
+                if (isWhite ? board.lWRookTile.piece != null && board.lWRookTile.piece.isRook != null : board.lBRookTile.piece != null && board.lBRookTile.piece.isRook != null)
                 {
                     Rook lRook = (isWhite ? board.lWRookTile.piece.isRook : board.lBRookTile.piece.isRook);
                     if (!lRook.moved) //Can only castle if none of the two pieces moved
                     {
+                        //See if tiles beside king are occupied
+                        Tile tileOne = board.TileAt(new Vector2Int(pos.x - 1, pos.y));
+                        Tile tileTwo = board.TileAt(new Vector2Int(pos.x - 2, pos.y));
+                        Tile tileThree = board.TileAt(new Vector2Int(pos.x - 3, pos.y));
+                        if (tileOne.piece != null || tileTwo.piece != null || tileThree.piece != null)
+                            return false;
                         //Check if any enemy are attacking the three tiles from the King to where it wants to castle
                         for (int i = 0; i < 3; i++)
                         {
@@ -105,13 +111,18 @@ public class King : Piece
                     }
                 }
             }
-            if (e.pos == new Vector2Int(6, (isWhite ? 0 : 7))) //If trying to castle to the left
+            if (e.pos == new Vector2Int(6, pos.y)) //If trying to castle to the right
             {
-                if ((isWhite ? board.rWRookTile.piece != null : board.rBRookTile.piece != null) && ((isWhite ? board.rWRookTile.piece.isRook != null : board.rBRookTile.piece.isRook != null)))
+                if (isWhite ? board.rWRookTile.piece != null && board.rWRookTile.piece.isRook != null : board.rBRookTile.piece != null && board.rBRookTile.piece.isRook != null)
                 {
                     Rook rRook = (isWhite ? board.rWRookTile.piece.isRook : board.rBRookTile.piece.isRook);
                     if (!rRook.moved) //Can only castle if none of the two pieces moved
                     {
+                        //See if tiles beside king are occupied
+                        Tile tileOne = board.TileAt(new Vector2Int(pos.x + 1, pos.y));
+                        Tile tileTwo = board.TileAt(new Vector2Int(pos.x + 2, pos.y));
+                        if (tileOne.piece != null || tileTwo.piece != null)
+                            return false;
                         //Check if any enemy are attacking the three tiles from the King to where it wants to castle
                         for (int i = 0; i < 3; i++)
                         {
@@ -144,5 +155,26 @@ public class King : Piece
                 moves.Add(board.TileAt(possibleMoves[i].pos));
         }
         return moves;
+    }
+
+    public void CheckIfMoved(Piece p, Tile s, Tile e)
+    {
+        if (p == this)
+        {
+            Debug.Log("ayy lmao");
+            moved = true;
+            board.notifyPieceMoved -= CheckIfMoved;
+        }
+    }
+
+    public void UpdateKingTile(Piece p, Tile s, Tile e)
+    {
+        if (p == this)
+        {
+            if (s == board.wKTile) //Check if king tile needs to be updated
+                board.wKTile = e;
+            else if (s == board.bKTile)
+                board.bKTile = e;
+        }
     }
 }

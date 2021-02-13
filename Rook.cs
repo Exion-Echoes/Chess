@@ -63,4 +63,39 @@ public class Rook : Piece
         }
         return moves;
     }
+
+    public void CheckIfMovedAndIfCastled(Piece p, Tile s, Tile e)
+    {
+        if (p == this)
+        {
+            moved = true;
+            board.notifyPieceMoved -= CheckIfMovedAndIfCastled;
+        }
+        else if (isWhite ? board.wKTile == s : board.bKTile == s && Mathf.Abs(e.pos.x - s.pos.x) == 2) //Check if king performed a castling move
+        {
+            //Must only castle one of the rooks, but both must have their observer function taken out of the notification delegate
+            //s and e are start and end tiles corresponding to king's movement
+
+            if (e.pos.x - s.pos.x == -2 && pos.x == 0) //Queen's rook
+            {
+                Tile rookTile = board.state[0 + e.pos.y * 8];
+                Tile nextToKing = board.state[3 + e.pos.y * 8];
+                nextToKing.piece = this;
+                pos = nextToKing.pos;
+                transform.position = board.UnityUnits(nextToKing.pos);
+                rookTile.piece = null;
+            }
+            else if (e.pos.x - s.pos.x == 2 && pos.x == 7) //King's rook
+            {
+                Tile rookTile = board.state[7 + e.pos.y * 8];
+                Tile nextToKing = board.state[5 + e.pos.y * 8];
+                nextToKing.piece = this;
+                pos = nextToKing.pos;
+                transform.position = board.UnityUnits(nextToKing.pos);
+                rookTile.piece = null;
+            }
+
+            board.notifyPieceMoved -= CheckIfMovedAndIfCastled;
+        }
+    }
 }
