@@ -61,33 +61,30 @@ public class Pawn : Piece
     {
         if(p == this && (s.pos.y == 1 || s.pos.y == 6))
         {
-            board.notifyPieceMoved -= EnPassantCheck; //Unsub from the notifications as soon as the pawn moves once
+            board.moveNotification -= EnPassantCheck; //Unsub from the notifications as soon as the pawn moves once
             if (e.pos.y == s.pos.y + 2 * (int)Mathf.Sign(e.pos.y - s.pos.y)) //If double moved, work out the en passant logic
             {
                 void SubscribeEnPassantPawn(Tile tile) //Identify neighbouring tiles to see if they're pawns and to turn on their en passant flag
                 {
                     if (tile != null && tile.piece != null && tile.piece.isPawn != null)
                     {
-                        tile.piece.isPawn.overrideEnPassantPawn = true;
+                        tile.piece.isPawn.overrideEnPassantPawn = true; //Used to handle case where this subs twice to the notification delegate
                         tile.piece.isPawn.enPassantPawn = this;
-                        board.notifyPieceMoved += tile.piece.isPawn.CanEatEnPassant;
+                        board.moveNotification += tile.piece.isPawn.CanEatEnPassant;
                     }
                 }
                 SubscribeEnPassantPawn(board.TileAt(e.pos - Vector2Int.right));
                 SubscribeEnPassantPawn(board.TileAt(e.pos + Vector2Int.right));
-
-//                Debug.Log("pawn of isWhite = " + isWhite + " just double moved");
             }
         }
     }
 
     public void CanEatEnPassant(Piece p, Tile s, Tile e)
     {
-//        Debug.Log(pos + ", " + enPassantPawn.pos);
         if(p.isWhite == !isWhite) //Guarantees that the en passant flag leaves on this color's next turn
         {
-            board.notifyPieceMoved -= CanEatEnPassant; //Unsub even if the en passant movement doesn't occur
-            if(!overrideEnPassantPawn) //Need to add one more move of delay before resetting the enPassantPawn, in case two pawns in a row activate the en passant functionality
+            board.moveNotification -= CanEatEnPassant; //Unsub even if the en passant movement doesn't occur
+            if(!overrideEnPassantPawn) //Need to add this one-turn delay in case two pawns in a row activate the en passant functionality
                 enPassantPawn = null;
             overrideEnPassantPawn = false;
         }

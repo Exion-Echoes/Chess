@@ -161,9 +161,8 @@ public class King : Piece
     {
         if (p == this)
         {
-            Debug.Log("ayy lmao");
             moved = true;
-            board.notifyPieceMoved -= CheckIfMoved;
+            board.moveNotification -= CheckIfMoved;
         }
     }
 
