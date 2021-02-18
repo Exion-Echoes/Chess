@@ -54,7 +54,13 @@ public class Computer : Player
             board.IsItGameOver(); //See whether opposing king is checkmated, or game reached a stalemate
             board.turnSwapper = !board.turnSwapper;
         }
-        else //I don't think I need this check for the computer, but I'll leave it in case - it seems useful for protecting king from checks
+        else //This is useful when enemy king's checked, because PossibleMoves() doesn't consider checked king - 
+             //***
+             //***
+             //**might need some elimination method to not be stuck in a loop of checking lots of false possible moves
+             //***after this, add starting menu to allow 2 computers, 2 humans, human vs computer, and white/black control
+             //***Would like to remove turnswapper bool as it's probably not necessary
+             //***
         {
             board.grabbedPiece.transform.position = board.UnityUnits(startTile.pos); //Reset grabbed piece back to original position
             board.gameState = PickAPiece;
@@ -102,13 +108,11 @@ public class Computer : Player
         }
 
         int promotionNum = Random.Range(0, 4);
-        Debug.Log(promotionNum + ", " + (promotionNum + (isWhite ? 0 : 4)));
         ChangePawn(promotionNum + (isWhite ? 1 : 5));
         board.grabbedPiece = board.state[board.grabbedPiece.pos.x + 8 * board.grabbedPiece.pos.y].piece;
         board.gameState = board.SwitchPlayer(this).PickAPiece;
         board.IsItGameOver(); //Promoting a pawn to a rook may checkmate or stalemate the opposing king
     }
-
 
     void ListAllUsableTiles()
     {

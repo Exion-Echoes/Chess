@@ -39,6 +39,7 @@ public class Board : MonoBehaviour
     public Tile[] state = new Tile[64];
     public Piece grabbedPiece; //Piece being operated on
     public List<Piece> eatenPieces = new List<Piece>();
+    List<SpriteRenderer> eatenSprites = new List<SpriteRenderer>();
     public Tile startTile, wKTile, bKTile; //King tiles need to be updated (Pieces wouldn't have to, but I would still need to keep track of their pos)
     public Tile lWRookTile, rWRookTile, lBRookTile, rBRookTile;
     public Tile enPassantTile; //Needs to be reset as soon as a move is made after this has been turned on
@@ -62,7 +63,7 @@ public class Board : MonoBehaviour
 
         promoSprites = InitiatePawnPromotionObjects();
 
-        p[0] = new GameObject().AddComponent<Human>();
+        p[0] = new GameObject().AddComponent<Computer>();
         p[0].isWhite = true;
         p[1] = new GameObject().AddComponent<Computer>();
 //        p[1] = new GameObject().AddComponent<Human>();
@@ -80,150 +81,18 @@ public class Board : MonoBehaviour
     {
         gameState();
 
-        //NEED PROPER ORDER - GIVE FREE-FOR-FALL OPTION, STANDARD OPTION (WHITE-BLACK TAKE TURNS), AND OPTION TO PLAY AGAINST A COMPUTER
-        //ALLOW A COMPUTER TO PLAY (START AS BLACK, AND INCLUDE WHITE AFTER)
-        //MINIMAL VIABLE PRODUCT WOULD INCLUDE computer playing
-        //  Have to rework the move functions so that they can be controlled by a player, and by a computer (AI needs to handle mousePos and decision-making)
-        //  gameState needs to take in player/AI flag, and screenPos input
-        //part of cleaning code could be removing as many instances of != null as possible
-        //NEXT - MAKE STATE FUNCTIONS ABSTRACT SO THAT AN AI CAN MAKE DECISIONS
+
         //Need esc button to reset game anytime
+        //PossibleMove eliminator for Computer in case of check, to prevent computer from being stuck for a long time
+        //STALEMATE SITUATIONS - 3 MOVES REPEATED AND ONLY KINGS LEFT (BISHOPS TOO - THERE ARE OTHER CONDITIONS THAT CREATE A STALEMATE)
+        //Start menu to revert to after a game finishes, with option to allow 2 computers, 2 humans, 1 human and 1 computer and white/black control
+        //remove bool turnswapper, which shouldn't be necessary with the new Player class
 
-        //Identify functions that need to be made abstract
-        //  PickAPiece, DropAPiece, PromotePawn
-        //Figure out how to make functions abstract
-        //  Need to replace mousePos, or work from a list of potential actions, choosing one at random, with weights towards the center of the board and towards the king ?
-        //Devise a basic AI that chooses from a list of potential movements
-        //  PickAPiece - Pick from list of pieces and keep chosen one if it has possible moves, otherwise find another piece
-        //      Maybe I can find all possible moves and favor those towards the center or towards the opposing king
-        //  DropAPiece - Pick from possible movements of grabbed piece, and drop
-        //  PromotePawn - Randomly pick from 0 to 3, to decide between the 4 options, perhaps with more weight towards the queen and rook?
-        //I will need some sort of abstraction that can result in an AI picking from a list to a player picking a piece with the mouse
-        //Maybe a class could extend into Computer and Player, which could hold definitions of the gameState functions
-        //Then, as soon as amount of player and amount of AI is chosen, gameState and the notiufication delegates can be filled up accordingly
-        //choosing player/ai set up defines gameState's first function, and white/black functions alternate
-    }
-
-    public void PickAPiece()
-    {
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-
-        if (Input.GetMouseButtonDown(0)) //Left click
-        {
-            Tile tile = TileAt(BoardUnits(mousePos));
-            if (tile != null && tile.piece != null && tile.piece.isWhite != turnSwapper)
-            {
-                startTile = tile;
-                grabbedPiece = tile.piece;
-                gameState = DropAPiece;
-            }
-        }
-    }
-
-    public void DropAPiece()
-    {
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        grabbedPiece.transform.position = new Vector3(mousePos.x, mousePos.y, -1.5f);
-
-        if (Input.GetMouseButtonUp(0)) //Let go of left click
-        {
-            Tile endTile = TileAt(BoardUnits(grabbedPiece.transform.position));
-            //            Debug.Log(startTile.piece + ", " + startTile.id + ", " + endTile.piece);
-            if (endTile != null && grabbedPiece.CanMove(startTile, endTile))
-            {
-                moveNotification(grabbedPiece, startTile, endTile); //Notify subscribers that the grabbedPiece moved from startTile to endTile
-
-                //Handle eating the piece occupied by the endTile, or enPassant
-                if (endTile.piece != null) //Check for regular eating
-                    DistributeEatenPieces(endTile);
-                else if (grabbedPiece.isPawn != null && grabbedPiece.isPawn.enPassantPawn != null && endTile.pos.x == grabbedPiece.isPawn.enPassantPawn.pos.x) //Consider en passant eating
-                    DistributeEatenPieces(TileAt(grabbedPiece.isPawn.enPassantPawn.pos));
-
-                //Place grabbed piece into end tile
-                grabbedPiece.transform.position = UnityUnits(endTile.pos);
-                endTile.piece = grabbedPiece;
-                endTile.piece.pos = endTile.pos;
-                startTile.piece = null;
-
-                //Consider possible changes of game states
-                if (grabbedPiece.isPawn != null && (endTile.pos.y == 0 || endTile.pos.y == 7)) //Pawn reached a promotion row
-                {
-                    HandlePawnPromotionsMenuDisplay(grabbedPiece, true); //Display submenu on top of the board
-                    gameState = PromotePawn;
-                }
-                else //Drop piece and return to regular play
-                    gameState = PickAPiece;
-
-                IsItGameOver(); //See whether opposing king is checkmated, or game reached a stalemate
-                turnSwapper = !turnSwapper;
-            }
-            else
-            {
-                grabbedPiece.transform.position = UnityUnits(startTile.pos); //Reset grabbed piece back to original position
-                gameState = PickAPiece;
-                Debug.Log("Could not place here");
-            }
-        }
-    }
-
-    public void PromotePawn()
-    {
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-
-        void ChangePawn(int i) //Turn grabbedPiece.isAPawn into a piece with a new logic
-        {
-            Sprite[] pieceSprites = Resources.LoadAll<Sprite>("Pieces");
-
-            Tile tile = TileAt(grabbedPiece.pos);
-            Destroy(tile.piece.gameObject);
-            switch (i) // i = [1, 4] = white, i = [5,8] = black (queen, rook, knight, bishop)
-            {
-                case 1:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Queen>(), pieceSprites[9], UnityUnits(tile.pos), true);
-                    break;
-                case 2:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Rook>(), pieceSprites[6], UnityUnits(tile.pos), true);
-                    break;
-                case 3:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Knight>(), pieceSprites[7], UnityUnits(tile.pos), true);
-                    break;
-                case 4:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Bishop>(), pieceSprites[8], UnityUnits(tile.pos), true);
-                    break;
-                case 5:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Queen>(), pieceSprites[3], UnityUnits(tile.pos), false);
-                    break;
-                case 6:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Rook>(), pieceSprites[0], UnityUnits(tile.pos), false);
-                    break;
-                case 7:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Knight>(), pieceSprites[1], UnityUnits(tile.pos), false);
-                    break;
-                case 8:
-                    state[tile.pos.x + 8 * tile.pos.y] = new Tile(tile.pos, new GameObject().AddComponent<Bishop>(), pieceSprites[2], UnityUnits(tile.pos), false);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        //After choosing
-        if (Input.GetMouseButtonDown(0)) //Left click
-        {
-            for(int i = 1; i <= 4; i++)
-            {
-                Vector3 promoPos = (grabbedPiece.isWhite ? promoSprites[i] : promoSprites[i + 4]).transform.position;
-                if (mousePos.x > promoPos.x - 15 && mousePos.x < promoPos.x + 15 && mousePos.y > promoPos.y - 15 && mousePos.y < promoPos.y + 15)
-                {
-                    ChangePawn(grabbedPiece.isWhite ? i : i + 4);
-                    grabbedPiece = state[grabbedPiece.pos.x + 8 * grabbedPiece.pos.y].piece;
-                    HandlePawnPromotionsMenuDisplay(null, false);
-                    gameState = PickAPiece;
-                    IsItGameOver(); //Promoting a pawn to a rook may checkmate or stalemate the opposing king
-                    break;
-                }
-            }
-        }
+        //Run engine test - to determine how many possible moves there are, for 1 layer deep (i.e. one move), 2 layer (2 moves), and so on, at different board states
+        //Look at Lague's video about this, where he identifies mistakes in his engine
+        //Understand how to make a rudimentary AI that goes beyond pure randomness and heat maps
+        //  One addition might be to add the worth of a piece when eaten (pawn, knight, bishop, rook, queen = 1, 3, 3, 5, 9)
+        //  Counting the sum of worth of both players and choosing a move that maximizes one's worth would be a good start to an AI
     }
 
     void GameOver()
@@ -238,13 +107,7 @@ public class Board : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) //Left click
         {
             Debug.Log("Reset the game");
-            Piece[] pieces = FindObjectsOfType<Piece>();
-            for (int i = 0; i < pieces.Length; i++)
-                Destroy(pieces[i].gameObject);
-
-            state = InitiateBoardState();
-            InitiateMoveNotificationDelegate();
-            turnSwapper = false;
+            ResetBoard();
 
             //MAYBE INSTEAD OF REINITILIAZING, I CAN UNDO EVERY MOVE UP TO THE FIRST ONE
 
@@ -280,7 +143,7 @@ public class Board : MonoBehaviour
     }
     #endregion
 
-    #region BOARD INITIATING FUNCTIONS
+    #region BOARD INITIATING/RESETING FUNCTIONS
     Tile[] InitiateBoardState()
     {
         Tile[] boardState = new Tile[64];
@@ -381,6 +244,21 @@ public class Board : MonoBehaviour
 
         return promotionObjects;
     }
+
+    void ResetBoard()
+    {
+        Piece[] pieces = FindObjectsOfType<Piece>();
+        for (int i = 0; i < pieces.Length; i++) //Destroy all pieces still on the board
+            Destroy(pieces[i].gameObject);
+
+        state = InitiateBoardState();
+        InitiateMoveNotificationDelegate();
+        turnSwapper = false;
+        eatenPieces.Clear();
+        for (int i = 0; i < eatenSprites.Count; i++) //Destroy displayed eaten pieces
+            Destroy(eatenSprites[i].gameObject);
+        eatenSprites.Clear();
+    }
     #endregion
 
     public void HandlePawnPromotionsMenuDisplay(Piece p, bool reveal) //Reveal(true) or hide(false) pawn promotion options
@@ -403,6 +281,7 @@ public class Board : MonoBehaviour
     public void DistributeEatenPieces(Tile tile)
     {
         eatenPieces.Add(tile.piece);
+        eatenSprites.Add(tile.piece.sr);
         Destroy(tile.piece);
         tile.piece = null;
 
@@ -410,6 +289,7 @@ public class Board : MonoBehaviour
         int bCount = 0;
         for (int i = 0; i < eatenPieces.Count; i++)
         {
+            Debug.Log(i);
             if (eatenPieces[i].isWhite)
                 wCount++;
             else
@@ -418,55 +298,120 @@ public class Board : MonoBehaviour
         eatenPieces[eatenPieces.Count-1].transform.position = new Vector3((eatenPieces[eatenPieces.Count - 1].isWhite ? 150 : 180), 120 - (eatenPieces[eatenPieces.Count - 1].isWhite ? wCount : bCount) * 15, -1);
     }
 
-    public bool IsEnemyKingChecked()
+    public void IsItGameOver()
     {
-        //Verify that king is attacked by grabbedPiece
-        List<Tile> pieceAttacks = new List<Tile>();
-        if (grabbedPiece.isPawn == null)
-            pieceAttacks = grabbedPiece.PossibleMoves();
-        else
-            pieceAttacks = grabbedPiece.isPawn.Attacks();
-        for (int i = 0; i < pieceAttacks.Count; i++)
+        bool IsEnemyKingChecked()
         {
-            if (pieceAttacks[i] == (grabbedPiece.isWhite ? bKTile : wKTile))
-                return true;
-        }
-        return false;
-    }
-
-    public bool EnemyCanMove() //Look for possible moves that protect enemy king - return false as soon as one is found, otherwise it has to be checkmate
-    {
-        for (int i = 0; i < 64; i++)
-        {
-            if (state[i].piece != null && state[i].piece.isWhite != grabbedPiece.isWhite)
+            //Verify that king is attacked by grabbedPiece
+            List<Tile> pieceAttacks = new List<Tile>();
+            if (grabbedPiece.isPawn == null)
+                pieceAttacks = grabbedPiece.PossibleMoves();
+            else
+                pieceAttacks = grabbedPiece.isPawn.Attacks();
+            for (int i = 0; i < pieceAttacks.Count; i++)
             {
-                List<Tile> possibleMoves = state[i].piece.PossibleMoves();
-                if (possibleMoves != null)
+                if (pieceAttacks[i] == (grabbedPiece.isWhite ? bKTile : wKTile))
+                    return true;
+            }
+            return false;
+        }
+
+        bool EnemyCanMove() //Look for possible moves that protect enemy king - return false as soon as one is found, otherwise it has to be checkmate
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                if (state[i].piece != null && state[i].piece.isWhite != grabbedPiece.isWhite)
                 {
-                    for (int j = 0; j < possibleMoves.Count; j++)
+                    List<Tile> possibleMoves = state[i].piece.PossibleMoves();
+                    if (possibleMoves != null)
                     {
-                        if (state[i].piece.CanMove(state[i], possibleMoves[j]))
-                            return true;
-//                        {
-//                            Debug.Log(state[i].piece + ", " + state[i].pos + ", " + j + ", " + possibleMoves[j].pos);
-//                            return true;
-//                        }
+                        for (int j = 0; j < possibleMoves.Count; j++)
+                        {
+                            if (state[i].piece.CanMove(state[i], possibleMoves[j]))
+                                return true;
+                        }
                     }
                 }
             }
+            return false;
         }
-        return false;
-    }
 
-    public bool IsItGameOver()
-    {
+        bool HaveThreeMovesBeenRepeated()
+        {
+            //**
+            //**
+            //**
+            //**
+            //Refer to TrackMoves(p, t, t) method
+            //**
+            //**
+            //**
+            //**
+            return false;
+        }
+
+        bool HasADeadPositionBeenReached()
+        {
+            //Dead positions:
+            //kings only
+            //king vs king + bishop
+            //king vs king + knight
+            //king + bishop vs king + bishop where both bishops are of the same tile color
+
+            //Would be faster to just keep two arrays stored throughout the game which get updated by the eating function
+            List<Piece> p0Pieces = new List<Piece>();
+            List<Piece> p1Pieces = new List<Piece>();
+            for(int i = 0; i < 64; i++)
+            {
+                if(state[i].piece != null)
+                {
+                    if (state[i].piece.isWhite == p[0].isWhite)
+                        p0Pieces.Add(state[i].piece);
+                    else
+                        p1Pieces.Add(state[i].piece);
+                }
+            }
+
+            if (p0Pieces.Count == 1 && p0Pieces[0].isKing != null && p1Pieces.Count == 1 && p1Pieces[0].isKing != null)
+                return true;
+            //***
+            //***
+            //***
+            //I SHOULD WRITE A FUNCTION THAT SUBS TO THE NOTIFICATION FUNCTION - AND IT WILL KEEP TRACK OF PIECES BEING EATEN AND PIECES LEFT
+            //***
+            //***
+            //***
+
+
+            //There are other situations where a dead position may be reached, such as the case where all pawns are blocking each other to the point that none can move
+            //and they block the kings from crossing, and there is no piece that can ever target any of the enemy pawns
+            //E.G. black pawns on black tiles blocking white pawns on white tiles, with white bishop on white tile (that can't reach white pawns) and black bishop on black tile (that can't reach white pawns)
+            //For this I think I need to verify that the possible moves come from bishops, and that the bishop can never hit any of the pawns
+            //this is a highly complicated scenario, that even chess.com doesn't do well, so maybe I should avoid trying to figure it out
+
+            return false;
+        } //Find whether state is unwinnable
+
+        bool hasADeadPositionBeenReached = HasADeadPositionBeenReached();
+        bool haveThreeMovesBeenRepeated = HaveThreeMovesBeenRepeated();
         bool enemyCanMove = EnemyCanMove(); //Look for checkmate/stalemate
         bool isEnemyKingChecked = IsEnemyKingChecked();
+
+        if(haveThreeMovesBeenRepeated || hasADeadPositionBeenReached)
+        {
+            if (haveThreeMovesBeenRepeated)
+                Debug.Log("Stalemate - 3 moves repeated");
+            else if (hasADeadPositionBeenReached)
+                Debug.Log("Stalemate - game state cannot be won");
+            gameState = GameOver;
+            return;
+        }
+
         if(!enemyCanMove)
         {
             if (!isEnemyKingChecked)
             {
-                Debug.Log("Stalemate");
+                Debug.Log("Stalemate - Enemy can't move");
                 gameState = GameOver;
             }
             else
@@ -475,7 +420,6 @@ public class Board : MonoBehaviour
                 gameState = GameOver;
             }
         }
-        return false;
     }
 
     void TrackMoves(Piece p, Tile s, Tile e) //

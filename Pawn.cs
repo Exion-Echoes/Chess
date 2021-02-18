@@ -39,7 +39,7 @@ public class Pawn : Piece
 
         if (!IsAnAlly(possibleMoves[0]) && !IsAnEnemy(possibleMoves[0]))
             moves.Add(possibleMoves[0]);
-        if (((pos.y == 1 && isWhite) || (pos.y == 6 && !isWhite)) && !IsAnAlly(possibleMoves[1]) && !IsAnEnemy(possibleMoves[1]))
+        if (((pos.y == 1 && isWhite) || (pos.y == 6 && !isWhite)) && !IsAnAlly(possibleMoves[0]) && !IsAnEnemy(possibleMoves[0]) && !IsAnAlly(possibleMoves[1]) && !IsAnEnemy(possibleMoves[1]))
             moves.Add(possibleMoves[1]);
 
         for (int i = 2; i <= 3; i++) //Attacks
