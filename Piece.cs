@@ -33,7 +33,7 @@ public class Piece : MonoBehaviour
         isBishop = GetComponent<Bishop>();
     }
 
-public virtual bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
+    public virtual bool CanMove(Tile startTile, Tile endTile, bool stateTest = false)
     {
         if (IsAnAlly(endTile)) //Cannot end at an allied tile
             return false;

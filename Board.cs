@@ -3,29 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/*Restarting project a second time (l0l):
- * state := playGame;
-initialize position
-print board
-while (state != gameover)
-   wait for input of a move by the user
-   make move (if legal)
-   if (mate or stalemate) {
-      state := gameOver;
-      break;
-   }
-   search move with allocated time
-   make move
-   print move and update board
-   if (mate or stalemate)
-      state := gameOver;
-}
-print "thank you for playing the game";
- * 
- */
-
-//WANT TO GET THIS WORKING WITH PROPER TURN ORDER AND LOGIC IN "UGLY" CODE, THEN WANT TO MAKE IT MORE EVENT BASED AND CLEAN (MEANING CODES SHOULDN'T DEPEND ON ONE ANOTHER TOO MUCH)
-
 public class Board : MonoBehaviour
 {
     public delegate void GameStateDelegate();
@@ -45,15 +22,11 @@ public class Board : MonoBehaviour
     public Tile enPassantTile; //Needs to be reset as soon as a move is made after this has been turned on
     public SpriteRenderer[] promoSprites;
     public bool turnSwapper;
+    int moveCount;
 
-
-    //***
-    //***
     //Initiate two players and give them human or computer, depending on playerS choice (start with human = white and computer = black)
-    //***
-    //***
     Player[] p = new Player[2];
-
+    DepthSearching depthSearch;
 
     public void Awake()
     {
@@ -69,6 +42,10 @@ public class Board : MonoBehaviour
 //        p[1] = new GameObject().AddComponent<Human>();
         gameState = p[0].PickAPiece;
 
+
+        //ply calculations
+        depthSearch = gameObject.AddComponent<DepthSearching>();
+        gameState = depthSearch.DepthSearch;
         //This will be done by game setup when first booting the game and after a game's done
     }
 
@@ -80,7 +57,6 @@ public class Board : MonoBehaviour
     public void Update()
     {
         gameState();
-
 
         //Need esc button to reset game anytime
         //PossibleMove eliminator for Computer in case of check, to prevent computer from being stuck for a long time
@@ -107,6 +83,7 @@ public class Board : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) //Left click
         {
             Debug.Log("Reset the game");
+
             ResetBoard();
 
             //MAYBE INSTEAD OF REINITILIAZING, I CAN UNDO EVERY MOVE UP TO THE FIRST ONE
@@ -258,6 +235,7 @@ public class Board : MonoBehaviour
         for (int i = 0; i < eatenSprites.Count; i++) //Destroy displayed eaten pieces
             Destroy(eatenSprites[i].gameObject);
         eatenSprites.Clear();
+        moveCount = 0;
     }
     #endregion
 
@@ -289,13 +267,12 @@ public class Board : MonoBehaviour
         int bCount = 0;
         for (int i = 0; i < eatenPieces.Count; i++)
         {
-            Debug.Log(i);
             if (eatenPieces[i].isWhite)
                 wCount++;
             else
                 bCount++;
         }
-        eatenPieces[eatenPieces.Count-1].transform.position = new Vector3((eatenPieces[eatenPieces.Count - 1].isWhite ? 150 : 180), 120 - (eatenPieces[eatenPieces.Count - 1].isWhite ? wCount : bCount) * 15, -1);
+        eatenPieces[eatenPieces.Count-1].transform.position = new Vector3((eatenPieces[eatenPieces.Count - 1].isWhite ? 150 : 180), 120 - (eatenPieces[eatenPieces.Count - 1].isWhite ? wCount : bCount) * 15, -1 - 0.01f * (eatenPieces[eatenPieces.Count - 1].isWhite ? wCount : bCount));
     }
 
     public void IsItGameOver()
@@ -361,19 +338,30 @@ public class Board : MonoBehaviour
             //Would be faster to just keep two arrays stored throughout the game which get updated by the eating function
             List<Piece> p0Pieces = new List<Piece>();
             List<Piece> p1Pieces = new List<Piece>();
-            for(int i = 0; i < 64; i++)
+            p0Pieces.Add(p[0].isWhite ? wKTile.piece : bKTile.piece);
+            p1Pieces.Add(p[1].isWhite ? wKTile.piece : bKTile.piece);
+            for (int i = 0; i < 64; i++)
             {
                 if(state[i].piece != null)
                 {
-                    if (state[i].piece.isWhite == p[0].isWhite)
+                    if (state[i].piece.isWhite == p[0].isWhite && state[i].piece.isKing == null)
                         p0Pieces.Add(state[i].piece);
-                    else
+                    else if(state[i].piece.isWhite == p[1].isWhite && state[i].piece.isKing == null)
                         p1Pieces.Add(state[i].piece);
                 }
             }
 
-            if (p0Pieces.Count == 1 && p0Pieces[0].isKing != null && p1Pieces.Count == 1 && p1Pieces[0].isKing != null)
+            if (p0Pieces.Count == 1 && p1Pieces.Count == 1) //First piece in the list is always the king, so a count of 1 means the kings are the only pieces left on the board
                 return true;
+
+            //One knight on each side - apparently this isn't a dead position
+            else if (p0Pieces.Count == 2 && p0Pieces[1].isKnight != null && p1Pieces.Count == 2 && p1Pieces[0].isKnight != null)
+                return true;
+
+            //One bishop or one knight left on either side of the board
+            else if(((p0Pieces.Count == 2 && (p0Pieces[1].isBishop != null || p0Pieces[1].isKnight != null)) && p1Pieces.Count == 1) || ((p1Pieces.Count == 2 && (p1Pieces[1].isBishop != null || p1Pieces[1].isKnight != null)) && p0Pieces.Count == 1))
+                return true;
+
             //***
             //***
             //***
@@ -394,15 +382,19 @@ public class Board : MonoBehaviour
 
         bool hasADeadPositionBeenReached = HasADeadPositionBeenReached();
         bool haveThreeMovesBeenRepeated = HaveThreeMovesBeenRepeated();
+        bool moveCountCapReached = moveCount >= 500; //STANDARDS ARE 50, BUT FOR COMPUTER VS COMPUTER SHENANIGANS, IT'S MORE ENTERTAINING TO HAVE A HIGH CAP
         bool enemyCanMove = EnemyCanMove(); //Look for checkmate/stalemate
         bool isEnemyKingChecked = IsEnemyKingChecked();
 
-        if(haveThreeMovesBeenRepeated || hasADeadPositionBeenReached)
+        if(haveThreeMovesBeenRepeated || hasADeadPositionBeenReached || moveCountCapReached)
         {
             if (haveThreeMovesBeenRepeated)
                 Debug.Log("Stalemate - 3 moves repeated");
             else if (hasADeadPositionBeenReached)
                 Debug.Log("Stalemate - game state cannot be won");
+            else if (moveCountCapReached)
+                Debug.Log("Stalemate - move count exceeded " + moveCount.ToString());
+            Debug.Log("moveCount: " + moveCount);
             gameState = GameOver;
             return;
         }
@@ -462,6 +454,7 @@ public class Board : MonoBehaviour
         string addition = (p.isWhite ? "w " : "b ") + p.IdentifyThis() + special + Convert(e.pos.x) + (e.pos.y + 1).ToString();
         Debug.Log(addition);
 
+        moveCount++;
         //THIS FUNCTION CAN BE REPLACED BY A NOTIFY FUNCTION TO ACHIEVE SOME RULES - TRACKING THE MOVES, 
         //*******************DETERMINING WHETHER KING AND ROOK MOVED - I WILL USE IT FOR THIS ESPECIALLY
     }

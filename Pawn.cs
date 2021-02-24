@@ -66,7 +66,7 @@ public class Pawn : Piece
             {
                 void SubscribeEnPassantPawn(Tile tile) //Identify neighbouring tiles to see if they're pawns and to turn on their en passant flag
                 {
-                    if (tile != null && tile.piece != null && tile.piece.isPawn != null)
+                    if (tile != null && tile.piece != null && tile.piece.isPawn != null && tile.piece.isWhite != isWhite)
                     {
                         tile.piece.isPawn.overrideEnPassantPawn = true; //Used to handle case where this subs twice to the notification delegate
                         tile.piece.isPawn.enPassantPawn = this;
