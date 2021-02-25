@@ -23,91 +23,106 @@ public class DepthSearching : MonoBehaviour
 
     public void DepthSearch()
     {
-        //Start with calculating possible moves for several layers at the basic state, then add starting state variation
-
-        //b.state is the starting state - I should write a customizable state initiation function in here later on
-        //Currently, b.state is the regular starting position
-
-        //One ply = one player's turn (e.g. white's possible moves)
-        //Two ply = second player's turn following one player's turn (so for each of white's moves, consider each of black's moves)
-        //So on...
-
-        //IN ESSENCE, I HAVE TO RUN THE SAME MOVEMENT FUNCTIONS AS THE PLAYER'S, BUT WITH LOGIC ON CHOOSING PIECES AND GOING THROUGH EACH POSSIBLE POSITION
-        //EACH SUBSEQUENT LAYER MUST HAVE A PICK/DROP ASSIGNMENT PERFORMED TO CHANGE THE BOARD STATE, AS WE ONLY NEED INSTANCES OF CanMove() == TRUE
-
-        //1st layer: Calculate all possible moves for white
-        //2nd layer: 
-        //  Pick & Drop first tile from list of possible moves for white
-        //  Calulate all possible moves for black
-        //  Pick & Drop tile moved in 1st step back to its starting position
-        //  Repeat with second tile from list of possible moves for white, until the list is exhausted
-
-        //"Calculate all possible moves" means Determine all PossibleMoves() and run them through CanMove()
-
-//        For each moves of the 1st layer, calculate all possible moves from black
-        //3rd layer: For each moves from the 2nd layer, calculate all possible moves from white
-
-        //WORK THE FUNCTIONS FOR 2ND LAYER ONLY, THEN ADAPT FOR ANY LAYER
-        //NEED TO CREATE TEMP STATES AND COUNTALLPOSSIBLEMOVES FROM THEM
-
         if (!counted)
         {
             List<PieceMoves> w0Moves = FindAllPossibleMoves(b.state, true);
 
             int w0Count = 0;
             int b0Count = 0;
+            int w1Count = 0;
+            int b1Count = 0;
+            int w2Count = 0;
 
-            for(int i = 0; i < w0Moves.Count; i++)
+            for (int i = 0; i < w0Moves.Count; i++)
             {
                 for (int j = 0; j < w0Moves[i].possibleMoves.Count; j++)
-                    w0Count++;
-            }
-
-            for (int i = 0; i < w0Moves.Count; i++) //Loop through pieces
-            {
-                for (int j = 0; j < w0Moves[i].possibleMoves.Count; j++) //Loop through possible moves of the ith piece
                 {
-                    Piece oldPiece = null;
-                    if (w0Moves[i].possibleMoves[j].piece != null)
-                        oldPiece = w0Moves[i].possibleMoves[j].piece;
-                    w0Moves[i].possibleMoves[j].piece = w0Moves[i].p;
-                    b.state[w0Moves[i].p.pos.x + 8 * w0Moves[i].p.pos.y].piece = null;
+                    w0Count++; //Count ply = 1 movements from the state
 
+                    //Create temporary state
+                    Piece w0P = w0Moves[i].possibleMoves[j].piece;
+                    b.state[w0Moves[i].possibleMoves[j].id].piece = w0Moves[i].t.piece;
+                    b.state[w0Moves[i].possibleMoves[j].id].piece.pos = w0Moves[i].possibleMoves[j].pos;
+                    b.state[w0Moves[i].t.id].piece = null;
+
+                    //Calculate on temporary state
                     List<PieceMoves> b0Moves = FindAllPossibleMoves(b.state, false);
 
-                    for (int ii = 0; ii < b0Moves.Count; ii++)
+                    for(int ii = 0; ii < b0Moves.Count; ii++)
                     {
-                        for (int jj = 0; jj < b0Moves[ii].possibleMoves.Count; jj++)
+                        for(int jj = 0; jj < b0Moves[ii].possibleMoves.Count; jj++)
                         {
                             b0Count++;
 
+                            //Create temporary state
+                            Piece b0P = b0Moves[ii].possibleMoves[jj].piece;
+                            b.state[b0Moves[ii].possibleMoves[jj].id].piece = b0Moves[ii].t.piece;
+                            b.state[b0Moves[ii].possibleMoves[jj].id].piece.pos = b0Moves[ii].possibleMoves[jj].pos;
+                            b.state[b0Moves[ii].t.id].piece = null;
 
+                            //Calculate on temporary state
+                            List<PieceMoves> w1Moves = FindAllPossibleMoves(b.state, true);
 
+                            for(int iii = 0; iii < w1Moves.Count; iii++)
+                            {
+                                for(int jjj = 0; jjj < w1Moves[iii].possibleMoves.Count; jjj++)
+                                {
+                                    w1Count++;
+
+                                    //Create a temporary state
+                                    Piece w1P = w1Moves[iii].possibleMoves[jjj].piece;
+                                    b.state[w1Moves[iii].possibleMoves[jjj].id].piece = w1Moves[iii].t.piece;
+                                    b.state[w1Moves[iii].possibleMoves[jjj].id].piece.pos = w1Moves[iii].possibleMoves[jjj].pos;
+                                    b.state[w1Moves[iii].t.id].piece = null;
+
+                                    //Calculate on temporary state
+                                    List<PieceMoves> b1Moves = FindAllPossibleMoves(b.state, false);
+
+                                    for(int iiii = 0; iiii < b1Moves.Count; iiii++)
+                                    {
+                                        for(int jjjj = 0; jjjj < b1Moves[iiii].possibleMoves.Count; jjjj++)
+                                        {
+                                            b1Count++;
+
+                                            //
+                                        }
+                                    }
+                                    //Return to original state
+                                    b.state[w1Moves[iii].t.id].piece = b.state[w1Moves[iii].possibleMoves[jjj].id].piece;
+                                    b.state[w1Moves[iii].t.id].piece.pos = w1Moves[iii].t.pos;
+                                    b.state[w1Moves[iii].possibleMoves[jjj].id].piece = w1P;
+                                }
+                            }
+                            //Return to original state
+                            b.state[b0Moves[ii].t.id].piece = b.state[b0Moves[ii].possibleMoves[jj].id].piece;
+                            b.state[b0Moves[ii].t.id].piece.pos = b0Moves[ii].t.pos;
+                            b.state[b0Moves[ii].possibleMoves[jj].id].piece = b0P;
                         }
                     }
-
-                    //Reset temporary state
-                    b.state[w0Moves[i].p.pos.x + 8 * w0Moves[i].p.pos.y].piece = w0Moves[i].p;
-                    w0Moves[i].possibleMoves[j].piece = oldPiece;
+                    //Return to original state
+                    b.state[w0Moves[i].t.id].piece = b.state[w0Moves[i].possibleMoves[j].id].piece;
+                    b.state[w0Moves[i].t.id].piece.pos = w0Moves[i].t.pos;
+                    b.state[w0Moves[i].possibleMoves[j].id].piece = w0P;
                 }
             }
-            //now need to change board state for each of ply 1's moves and calculate each of black's moves (ply 2)
-            //to change board state, need to adapt the functions below
 
-
-            Debug.Log(w0Count + ", " + b0Count);
-
+            Debug.Log(w0Count + ", " + b0Count + ", " + w1Count + ", " + b1Count + ", " + w2Count); //w1Count should be 8902
+            
             counted = true;
         }
     }
 
     List<PieceMoves> FindAllPossibleMoves(Tile[] state, bool wPly) //Finds possible moves for a given board state for the player of isWhite = wPly
     {
+//        Debug.Log("lmao");
         List<PieceMoves> pM = new List<PieceMoves>();
+//        Debug.Log("AYYYYYYY LMAO " + b.state[18].piece + ", " + b.state[1].piece);// + ", " + b.state[18].piece.PossibleMoves().Count);
         for (int i = 0; i < 64; i++)
         {
             if (state[i].piece != null && state[i].piece.isWhite == wPly)
             {
+  //              if (state[i].piece.pos == new Vector2Int(2, 2))
+//                    Debug.Log("ayy lmao");
                 List<Tile> allMoves = state[i].piece.PossibleMoves();
                 List<Tile> allowedMoves = new List<Tile>();
                 if (allMoves.Count != 0)
@@ -118,7 +133,9 @@ public class DepthSearching : MonoBehaviour
                             allowedMoves.Add(allMoves[j]);
                     }
                 }
-                pM.Add(new PieceMoves(state[i].piece, allowedMoves));
+//                if (state[i].piece.pos == new Vector2Int(2, 2))
+  //                  Debug.Log(state[i].id + ", " + state[i].piece.pos + ", " + state[i].piece + ", " + allMoves.Count + ", " + allowedMoves.Count);
+                pM.Add(new PieceMoves(state[i], allowedMoves));
             }
         }
         return pM;
@@ -127,12 +144,12 @@ public class DepthSearching : MonoBehaviour
 
 class PieceMoves
 {
-    public Piece p;
+    public Tile t;
     public List<Tile> possibleMoves;
 
-    public PieceMoves(Piece p, List<Tile> possibleMoves)
+    public PieceMoves(Tile t, List<Tile> possibleMoves)
     {
-        this.p = p;
+        this.t = t;
         this.possibleMoves = possibleMoves;
     }
 }
