@@ -84,7 +84,36 @@ public class DepthSearching : MonoBehaviour
                                         {
                                             b1Count++;
 
-                                            //
+                                            #region 5 PLY LOGIC - TOO SLOW TO ALWAYS BE RUNNING
+                                            /*                                            //Create a temporary state
+                                                                                        Piece b1P = b1Moves[iiii].possibleMoves[jjjj].piece;
+                                                                                        b.state[b1Moves[iiii].possibleMoves[jjjj].id].piece = b1Moves[iiii].t.piece;
+                                                                                        b.state[b1Moves[iiii].possibleMoves[jjjj].id].piece.pos = b1Moves[iiii].possibleMoves[jjjj].pos;
+                                                                                        b.state[b1Moves[iiii].t.id].piece = null;
+
+                                                                                        //Calculate on temporary state
+                                                                                        List<PieceMoves> w2Moves = FindAllPossibleMoves(b.state, true);
+
+                                                                                        for (int iiiii = 0; iiiii < w2Moves.Count; iiiii++)
+                                                                                        {
+                                                                                            for (int jjjjj = 0; jjjjj < w2Moves[iiiii].possibleMoves.Count; jjjjj++)
+                                                                                            {
+                                                                                                w2Count++;
+
+                                                                                                //I got 4 866 020 positions here, and the accepted result is 4 865 609
+                                                                                                //I can't run more tests on my computer as the code isn't optimized enough
+                                                                                                //I think the problem might lie in delicate cases, such as pins and en-passant eating
+                                                                                                ////////
+                                                                                            }
+                                                                                        }
+                                                                                        //Return to original state
+                                                                                        b.state[b1Moves[iiii].t.id].piece = b.state[b1Moves[iiii].possibleMoves[jjjj].id].piece;
+                                                                                        b.state[b1Moves[iiii].t.id].piece.pos = b1Moves[iiii].t.pos;
+                                                                                        b.state[b1Moves[iiii].possibleMoves[jjjj].id].piece = b1P;*/
+                                            #endregion
+
+                                            //5 ply logic gives a result about 600 moves ahead of the accepted result
+                                            //if I wanted to test it out, I could run an async function and try to find mistakes
                                         }
                                     }
                                     //Return to original state
@@ -106,7 +135,7 @@ public class DepthSearching : MonoBehaviour
                 }
             }
 
-            Debug.Log(w0Count + ", " + b0Count + ", " + w1Count + ", " + b1Count + ", " + w2Count); //w1Count should be 8902
+            Debug.Log(w0Count + ", " + b0Count + ", " + w1Count + ", " + b1Count + ", " + w2Count);
             
             counted = true;
         }

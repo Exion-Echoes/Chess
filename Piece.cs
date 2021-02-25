@@ -9,6 +9,7 @@ public class Piece : MonoBehaviour
     public Vector2Int pos;
     public List<Vector2Int> attacks = new List<Vector2Int>();
     public Pawn isPawn;
+    public bool pawn;
     public Rook isRook;
     public King isKing;
     public Queen isQueen;
@@ -26,6 +27,8 @@ public class Piece : MonoBehaviour
     public virtual void Start()
     {
         isPawn = GetComponent<Pawn>();
+        if (isPawn != null)
+            pawn = true;
         isRook = GetComponent<Rook>();
         isKing = GetComponent<King>();
         isQueen = GetComponent<Queen>();

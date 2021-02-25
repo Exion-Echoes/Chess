@@ -36,17 +36,16 @@ public class Board : MonoBehaviour
 
         promoSprites = InitiatePawnPromotionObjects();
 
-        p[0] = new GameObject().AddComponent<Computer>();
+        p[0] = new GameObject().AddComponent<Human>();
+//        p[0] = new GameObject().AddComponent<Computer>();
         p[0].isWhite = true;
         p[1] = new GameObject().AddComponent<Computer>();
 //        p[1] = new GameObject().AddComponent<Human>();
         gameState = p[0].PickAPiece;
 
-
         //ply calculations
-        depthSearch = gameObject.AddComponent<DepthSearching>();
-        gameState = depthSearch.DepthSearch;
-        //This will be done by game setup when first booting the game and after a game's done
+//        depthSearch = gameObject.AddComponent<DepthSearching>();
+//        gameState = depthSearch.DepthSearch;
     }
 
     private void Start()
@@ -362,15 +361,6 @@ public class Board : MonoBehaviour
             else if(((p0Pieces.Count == 2 && (p0Pieces[1].isBishop != null || p0Pieces[1].isKnight != null)) && p1Pieces.Count == 1) || ((p1Pieces.Count == 2 && (p1Pieces[1].isBishop != null || p1Pieces[1].isKnight != null)) && p0Pieces.Count == 1))
                 return true;
 
-            //***
-            //***
-            //***
-            //I SHOULD WRITE A FUNCTION THAT SUBS TO THE NOTIFICATION FUNCTION - AND IT WILL KEEP TRACK OF PIECES BEING EATEN AND PIECES LEFT
-            //***
-            //***
-            //***
-
-
             //There are other situations where a dead position may be reached, such as the case where all pawns are blocking each other to the point that none can move
             //and they block the kings from crossing, and there is no piece that can ever target any of the enemy pawns
             //E.G. black pawns on black tiles blocking white pawns on white tiles, with white bishop on white tile (that can't reach white pawns) and black bishop on black tile (that can't reach white pawns)
@@ -448,6 +438,15 @@ public class Board : MonoBehaviour
         string special = "";
         if (e.piece != null) //It means the piece ate the one at this tile
             special = " x ";
+        //        if (p.isPawn != null &&) //Need notifier for pawn promotion
+        //          special = "p=P";
+        if (p.pawn && p.isPawn == null)
+            Debug.Log("Pawn promotion occurred");
+  //maybe keep pawn script so it can be detected, or maybe ispawn stays true?
+    //if castling
+    //O-O
+    //special
+        //if (castling)
 
         //NEED PAWN PROMOTION AND CASTLING SPECIAL
 
@@ -455,7 +454,5 @@ public class Board : MonoBehaviour
         Debug.Log(addition);
 
         moveCount++;
-        //THIS FUNCTION CAN BE REPLACED BY A NOTIFY FUNCTION TO ACHIEVE SOME RULES - TRACKING THE MOVES, 
-        //*******************DETERMINING WHETHER KING AND ROOK MOVED - I WILL USE IT FOR THIS ESPECIALLY
     }
 }
