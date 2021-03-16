@@ -56,18 +56,6 @@ public class Board : MonoBehaviour
     public void Update()
     {
         gameState();
-
-        //Need esc button to reset game anytime
-        //PossibleMove eliminator for Computer in case of check, to prevent computer from being stuck for a long time
-        //STALEMATE SITUATIONS - 3 MOVES REPEATED AND ONLY KINGS LEFT (BISHOPS TOO - THERE ARE OTHER CONDITIONS THAT CREATE A STALEMATE)
-        //Start menu to revert to after a game finishes, with option to allow 2 computers, 2 humans, 1 human and 1 computer and white/black control
-        //remove bool turnswapper, which shouldn't be necessary with the new Player class
-
-        //Run engine test - to determine how many possible moves there are, for 1 layer deep (i.e. one move), 2 layer (2 moves), and so on, at different board states
-        //Look at Lague's video about this, where he identifies mistakes in his engine
-        //Understand how to make a rudimentary AI that goes beyond pure randomness and heat maps
-        //  One addition might be to add the worth of a piece when eaten (pawn, knight, bishop, rook, queen = 1, 3, 3, 5, 9)
-        //  Counting the sum of worth of both players and choosing a move that maximizes one's worth would be a good start to an AI
     }
 
     void GameOver()
